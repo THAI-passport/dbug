@@ -38,3 +38,13 @@ dbug_audit_bundle.txt
 .env
 venv/
 .venv/
+
+# reWork workflow shell additions (vendor artifacts + dbug-generated output)
+targets/*/artifacts/
+targets/*/work/
+targets/*/decompiled/
+node_modules/
+*.egg-info/
+reports/*
+!reports/README.md
+targets/simulated_*/
