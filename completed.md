@@ -8,12 +8,13 @@ This document provides a comprehensive ledger of all completed implementation ph
 
 | Gate / Phase | Title & Scope | Primary Deliverables | Status | Verification Result |
 | :--- | :--- | :--- | :--- | :--- |
-| **Gate G0** | **Sample Intake & Static Triage** | `sample_triage/triage_apk.py`<br>`targets/<hash>/STATIC_AUDIT.md`<br>`TARGET.md`, `SOURCES.md`, `FACTS.md` | COMPLETE | Automated APK/DEX unpacker, hash extraction, packer identification, anti-analysis string audit verified. |
+| **Gate G0** | **Sample Intake & Static Triage** | `sample_triage/triage_apk.py`<br>`sample_triage/native_emulator.py`<br>`targets/<hash>/STATIC_AUDIT.md`<br>`TARGET.md`, `SOURCES.md`, `FACTS.md` | COMPLETE | Automated APK/DEX unpacker, hash extraction, AArch64 string decryptor emulator, and anti-analysis auditor. |
 | **Phase 1 (G2)** | **Configuration & Canary Data Seeding** | `config/lab_config.yaml`<br>`config/mock_canaries.json`<br>`config/seed_canaries.py` | COMPLETE | Seeding, verification (`--verify`), and cleanup (`--clean`) verified via `--dry-run` and live query handling. |
 | **Phase 2 (G1)** | **On-Device Stealth Cloaking** | `device_cloaking/apply_stealth_props.sh`<br>`device_cloaking/check_lsposed_devmode.sh`<br>`device_cloaking/verify_stealth_state.py` | COMPLETE | 5-layer audit suite passes all checks (`--dry-run`), syntax verified (`sh -n`), restore routines operational. |
 | **Phase 3 (G3)** | **Zero-Footprint Network & TLS Capture** | `network_capture/gateway_setup.sh`<br>`network_capture/ecapture_runner.py`<br>`network_capture/sinkhole_inetsim.conf` | COMPLETE | External Linux AP routing, iptables NAT, full tcpdump capture, and eBPF Conscrypt uprobe management verified. |
 | **Phase 4 (G4)** | **Dynamic Runtime & Pre-Network Crypto** | `instrumentation/agent/bypass_antidebug.js`<br>`instrumentation/agent/crypto_dumper.js`<br>`instrumentation/agent/socket_tracer.js`<br>`instrumentation/frida_loader.py` | COMPLETE | Surgical hooks on `Cipher.init/doFinal`, native `connect/send`, `ptrace(PTRACE_TRACEME)`, and port 38921 loader verified. |
-| **Phase 5 (G5)** | **Correlation, Decryption & Reporting** | `parser_correlator/pcap_decryptor.py`<br>`parser_correlator/canary_hunter.py`<br>`parser_correlator/ioc_extractor.py`<br>`parser_correlator/yara_generator.py`<br>`orchestrator.py` | COMPLETE | End-to-end master pipeline executed across all 8 stages (`--dry-run`), outputting YARA rule, STIX 2.1 JSON and MD report. |
+| **Phase 5 (G5)** | **Correlation, Decryption & Reporting** | `parser_correlator/pcap_decryptor.py`<br>`parser_correlator/canary_hunter.py`<br>`parser_correlator/c2_protocol_decoder.py`<br>`parser_correlator/family_classifier.py`<br>`parser_correlator/ioc_extractor.py`<br>`parser_correlator/yara_generator.py`<br>`orchestrator.py` | COMPLETE | End-to-end master pipeline executed across all 8 stages (`--dry-run`), outputting YARA rule, STIX 2.1 JSON, MD report, C2 spec, and target directory sync. |
+| **Validation** | **Automated End-to-End Test Suite** | `tests/test_framework_e2e.py` | COMPLETE | 12 automated test suites covering G0-G5 pass with 100% test success rate. |
 
 ---
 
@@ -60,10 +61,18 @@ This document provides a comprehensive ledger of all completed implementation ph
   - Combines raw gateway PCAP with eCapture `sslkey.log` using `tshark` to decrypt TLS sessions into plaintext HTTP/1.1 and HTTP/2 flows.
 - **Step 5.2: [parser_correlator/canary_hunter.py](file:///Users/puredent/Desktop/dbug/parser_correlator/canary_hunter.py)**
   - High-precision correlation engine scanning Frida crypto dumps and decrypted traffic across raw, Base64, Hexadecimal, and URL encodings. Emits `CANARY_EXFIL_HITS.json`.
-- **Step 5.3: [parser_correlator/ioc_extractor.py](file:///Users/puredent/Desktop/dbug/parser_correlator/ioc_extractor.py)**
+- **Step 5.3: [parser_correlator/c2_protocol_decoder.py](file:///Users/puredent/Desktop/dbug/parser_correlator/c2_protocol_decoder.py)**
+  - Reconstructs Command and Control protocol framing, magic header bytes, tasking opcodes, and wire layout into a formal `C2_PROTOCOL.md` specification.
+- **Step 5.4: [parser_correlator/family_classifier.py](file:///Users/puredent/Desktop/dbug/parser_correlator/family_classifier.py)**
+  - Behavioral attribution classifier scoring observed execution artifacts against the `dbug-infostealer-catalog` (Ermac, Hook, CraxsRAT, SpyNote, Godfather, Octo), outputting `FAMILY_ATTRIBUTION.json`.
+- **Step 5.5: [parser_correlator/ioc_extractor.py](file:///Users/puredent/Desktop/dbug/parser_correlator/ioc_extractor.py)**
   - Normalizes observables into machine-readable `iocs.json`, STIX 2.1 bundle `threat_report_stix21.json`, and evidence-tagged executive report `analysis_report.md`.
-- **Step 5.4: [orchestrator.py](file:///Users/puredent/Desktop/dbug/orchestrator.py)**
-  - Master CLI (`python3 orchestrator.py --apk <sample.apk> --duration 120`) coordinating all gates G1 through G5 end-to-end with automated teardown and reporting.
+- **Step 5.6: [parser_correlator/yara_generator.py](file:///Users/puredent/Desktop/dbug/parser_correlator/yara_generator.py)**
+  - Synthesizes defensive YARA detection signatures matching APK zip headers, package name, anti-analysis strings, and unique observed C2 endpoints.
+- **Step 5.7: [orchestrator.py](file:///Users/puredent/Desktop/dbug/orchestrator.py)**
+  - Master CLI coordinating all gates G0 through G5 end-to-end with automated teardown, reporting, and canonical target directory synchronization (`targets/<sample_hash>/`).
+- **Step 5.8: [tests/test_framework_e2e.py](file:///Users/puredent/Desktop/dbug/tests/test_framework_e2e.py)**
+  - Comprehensive 12-test automated end-to-end test suite providing 100% reproducible validation of the entire pipeline.
 
 ---
 

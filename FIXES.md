@@ -13,3 +13,7 @@ Tracks "Open" and "Fixed" issues in the dbug analysis toolkit.
 | FIX-007 | `orchestrator.py` | Need end-to-end multi-gate automation CLI with dry-run support | FIXED | Implemented master orchestrator executing G1-G5 pipeline end-to-end |
 | FIX-008 | `sample_triage/triage_apk.py` | Need automated Gate G0 static assessment before dynamic launch | FIXED | Implemented pure Python APK/DEX unpacker and anti-analysis auditor |
 | FIX-009 | `instrumentation/agent/bypass_antidebug.js` | Anti-ptrace and anti-root file access evasion checks | FIXED | Added native `ptrace(PTRACE_TRACEME)` and `/su` file access interceptors |
+| FIX-010 | `parser_correlator/c2_protocol_decoder.py` | Need automated C2 framing and tasking opcode reconstruction | FIXED | Implemented C2 protocol dissector outputting formal `C2_PROTOCOL.md` specification |
+| FIX-011 | `parser_correlator/family_classifier.py` | Need behavioral malware family attribution from observed artifacts | FIXED | Implemented heuristic scorer matching against catalog (Ermac, CraxsRAT, SpyNote, etc.) |
+| FIX-012 | `sample_triage/native_emulator.py` | Native packed string decryption routines in obfuscated `.so` libraries | FIXED | Built AArch64 emulation harness supporting Unicorn with pure-Python fallback |
+| FIX-013 | `orchestrator.py` & `targets/` | Canonical workspace out-of-sync between session runs and `targets/<hash>/` | FIXED | Added `sync_canonical_target_repo()` updating `TARGET.md`, `SOURCES.md`, `FACTS.md`, `ANALYSIS.md`, `REPORT.md`, `LOG.md` |

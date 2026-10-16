@@ -59,8 +59,6 @@ class CanaryHunter:
             for item in items:
                 token = item.get("canary_token", "CANARY_TOKEN")
                 for field_key, field_val in item.items():
-                    if field_key == "canary_token":
-                        continue
                     if isinstance(field_val, str) and len(field_val) >= 4:
                         self.targets.append({
                             "category": category,

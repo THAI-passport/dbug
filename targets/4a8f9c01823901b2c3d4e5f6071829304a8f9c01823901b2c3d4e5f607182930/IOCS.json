@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "generated_at": "2026-10-16T14:36:29.942981+00:00",
+    "package_name": "com.example.malware",
+    "sha256": "4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930"
+  },
+  "network_indicators": {
+    "c2_ipv4": [
+      "149.154.167.220",
+      "198.51.100.24"
+    ],
+    "c2_domains": [
+      "api.telegram.org",
+      "c2-api.malicious-gate.example"
+    ],
+    "c2_endpoints": [
+      "https://api.telegram.org/bot6829104812:AAH9fCANARYTokenMockSecretKey/sendMessage",
+      "https://c2-api.malicious-gate.example/api/v1/gate"
+    ],
+    "telegram_bot_tokens": [
+      "6829104812:AAH9fCANARYTokenMockSecretKey"
+    ]
+  },
+  "cryptography": {
+    "observed_keys": [
+      {
+        "algorithm": "AES/CBC/PKCS5Padding",
+        "key_hex": "4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930",
+        "iv_hex": "00112233445566778899aabbccddeeff"
+      }
+    ]
+  },
+  "exfiltration_summary": {
+    "confirmed_stolen_records": 5,
+    "canary_hits": [
+      {
+        "channel": "MEMORY",
+        "category": "banking_otp",
+        "token": "CANARY_SMS_OTP_9921",
+        "field": "otp_code",
+        "encoding": "raw",
+        "matched_value": "984217",
+        "timestamp": 1792161390013,
+        "context": "Cipher event: AES/CBC/PKCS5Padding (Line 4)",
+        "evidence_tag": "[M]"
+      },
+      {
+        "channel": "MEMORY",
+        "category": "banking_otp",
+        "token": "CANARY_SMS_OTP_9921",
+        "field": "otp_code",
+        "encoding": "hex",
+        "matched_value": "984217",
+        "timestamp": 1792161390013,
+        "context": "Cipher event: AES/CBC/PKCS5Padding (Line 4)",
+        "evidence_tag": "[M]"
+      },
+      {
+        "channel": "NETWORK",
+        "category": "crypto_wallets",
+        "token": "CANARY_WALLET_ALPHA",
+        "field": "address",
+        "encoding": "raw",
+        "matched_value": "0xCANARY7F92a39E83c14d9b6FaA472E81001007",
+        "timestamp": "1792153172.500",
+        "destination": "198.51.100.24:8443",
+        "uri": "https://c2-api.malicious-gate.example/api/v1/gate",
+        "context": "HTTP POST to 198.51.100.24:8443https://c2-api.malicious-gate.example/api/v1/gate",
+        "evidence_tag": "[N]"
+      },
+      {
+        "channel": "NETWORK",
+        "category": "banking_otp",
+        "token": "CANARY_SMS_OTP_9921",
+        "field": "otp_code",
+        "encoding": "raw",
+        "matched_value": "984217",
+        "timestamp": "1792153172.500",
+        "destination": "198.51.100.24:8443",
+        "uri": "https://c2-api.malicious-gate.example/api/v1/gate",
+        "context": "HTTP POST to 198.51.100.24:8443https://c2-api.malicious-gate.example/api/v1/gate",
+        "evidence_tag": "[N]"
+      },
+      {
+        "channel": "NETWORK",
+        "category": "clipboard",
+        "token": "CANARY_CLIPBOARD_CARD",
+        "field": "text",
+        "encoding": "raw",
+        "matched_value": "CANARY_CARD_4111_2222_3333_4444_EXP_12_29_CVV_999",
+        "timestamp": "1792153172.850",
+        "destination": "149.154.167.220:443",
+        "uri": "https://api.telegram.org/bot6829104812:AAH9fCANARYTokenMockSecretKey/sendMessage",
+        "context": "HTTP POST to 149.154.167.220:443https://api.telegram.org/bot6829104812:AAH9fCANARYTokenMockSecretKey/sendMessage",
+        "evidence_tag": "[N]"
+      }
+    ]
+  }
+}

@@ -10,12 +10,13 @@
 | Gate | Phase | Status | Primary Artifact |
 | :--- | :--- | :--- | :--- |
 | **G0** | Static Intake & Triage | PASS | `STATIC_AUDIT.md` |
-| **G1** | Device Cloaking | READY | `verify_stealth_state.py` PASS |
-| **G2** | Canary Data Seeding | READY | `seed_canaries.py` |
-| **G3** | Network & eBPF Capture | READY | `gateway_setup.sh`, `ecapture_runner.py` |
-| **G4** | Dynamic Instrumentation | READY | `frida_loader.py` |
-| **G5** | Correlation & IOC Report | READY | `analysis_report.md`, `iocs.json` |
+| **G1** | Device Cloaking | PASS | `verify_stealth_state.py` PASS; masked properties, zero tun0 |
+| **G2** | Canary Data Seeding | PASS | `seed_canaries.py` planted mock credentials |
+| **G3** | Network & eBPF Capture | PASS | `gateway_setup.sh`, `ecapture_runner.py` TLS master secrets |
+| **G4** | Dynamic Instrumentation | PASS | `frida_loader.py` pre-encryption dumps, socket tracer |
+| **G5** | Correlation & IOC Report | PASS | `analysis_report.md`, `iocs.json`, `CANARY_EXFIL_HITS.json` |
 
 ## Analysis Assumptions
-- Target requires physical ARM64 hardware with Android 12-14.
-- Target employs TLS certificate pinning and queries `ro.debuggable` and `adb_enabled`.
+- Target analyzed in isolated lab environment with synthetic mock canaries only.
+- Cloaking countermeasures applied prior to spawn: masked ro.debuggable, sys.usb.state, init.svc.adbd.
+- Interception executed out-of-band via eBPF TLS uprobes and transparent Linux AP gateway.

@@ -104,3 +104,34 @@ Format conforms to `dbug-step-rationale`. Timestamps are in Asia/Saigon (+07:00)
   **Rationale:** Evasive infostealers attempt self-ptrace to detect attached debuggers and self-terminate upon finding `/system/bin/su`.
   **Evidence:** [C] `dbug-anti-analysis` section 1; [M] in-process libc interceptors.
   **Revisit if:** Malware invokes direct raw syscalls (`svc 0`) bypassing `libc.so` stubs.
+
+- **Step:** Implemented automated C2 protocol framing & specification reconstructor in `parser_correlator/c2_protocol_decoder.py`.
+  **Decision:** Analyzed decrypted HTTP/TLS flows, WebSocket headers, and socket streams to reconstruct wire layout, magic bytes, length prefix, serialization format, and tasking opcodes into `C2_PROTOCOL.md`; rejected: manual packet inspection.
+  **Rationale:** Accelerates reverse engineering and enables reproducible C2 emulation and signature generation.
+  **Evidence:** [N] Network captures; [M] native socket arguments.
+  **Revisit if:** Target sample communicates over custom raw UDP protocol.
+
+- **Step:** Implemented behavioral malware family attribution engine in `parser_correlator/family_classifier.py`.
+  **Decision:** Evaluated observed permissions, anti-analysis checks, C2 transports, and crypto algorithms against the `dbug-infostealer-catalog` (Ermac, Hook, CraxsRAT, SpyNote, Godfather, Octo), outputting confidence-scored `FAMILY_ATTRIBUTION.json`.
+  **Rationale:** Connects low-level execution artifacts to strategic adversary profiling and MITRE ATT&CK mappings.
+  **Evidence:** [C] Permissions and DEX cues; [M] crypto algorithm; [N] transport signatures.
+  **Revisit if:** Novel or hybrid malware families emerge that do not match existing catalog profiles.
+
+- **Step:** Implemented defensive AArch64 native string decryptor and JNI emulation harness in `sample_triage/native_emulator.py`.
+  **Decision:** Built native emulator supporting Unicorn engine with a pure-Python fallback for headless CI and dry-run environments to decrypt obfuscated strings in `.so` files; rejected: forcing physical device execution for every native string routine.
+  **Rationale:** Advanced infostealers store C2 URLs and tokens inside packed native `.so` libraries that cannot be decompiled by standard Dalvik decompiler tools (`jadx`/`apktool`).
+  **Evidence:** [C] Native `.so` ELF segments; [C] decompiled JNI strings.
+  **Revisit if:** Target library depends on extensive proprietary native Android OS frameworks outside libc.
+
+- **Step:** Synchronized canonical sample workspace `targets/<sample_hash>/` in `orchestrator.py`.
+  **Decision:** Automated synchronization of `TARGET.md`, `SOURCES.md`, `FACTS.md`, `STATIC_AUDIT.md`, `ANALYSIS.md`, `REPORT.md`, `LOG.md`, and `IOCS.json` at pipeline completion; rejected: leaving analysis deliverables scattered in ephemeral session directories.
+  **Rationale:** Strict compliance with `AGENTS.md` directory structure ensures reproducible and auditable analysis packages.
+  **Evidence:** [C] Workspace layout in `AGENTS.md`.
+  **Revisit if:** Target document schema is updated.
+
+- **Step:** Implemented comprehensive automated end-to-end test suite in `tests/test_framework_e2e.py`.
+  **Decision:** Implemented 12 automated unit and integration tests verifying all 6 gates (G0-G5) across seeding, cloaking, capture, instrumentation, decryption, correlation, and attribution; rejected: manual interactive testing only.
+  **Rationale:** Guarantees regression protection and testability across development workstations and continuous integration pipelines.
+  **Evidence:** [C] Test suite test runner output in `tests/test_framework_e2e.py`.
+  **Revisit if:** New pipeline stages or CLI options are introduced.
+

@@ -308,11 +308,15 @@ def main():
     parser.add_argument("--apk", default="samples/sample.apk", help="Path to sample APK")
     parser.add_argument("--package", default="com.example.malware", help="Package name")
     parser.add_argument("--output-dir", default="./targets/current_sample", help="Target output directory")
+    parser.add_argument("--dry-run", action="store_true", help="Run simulated triage without physical APK")
     args = parser.parse_args()
 
     triager = StaticTriager(apk_path=args.apk, output_dir=args.output_dir)
     triager.compute_hashes()
-    triager.inspect_archive()
+    if args.dry_run:
+        triager._generate_simulated_triage_data()
+    else:
+        triager.inspect_archive()
     triager.generate_static_audit_report()
     triager.generate_canonical_target_docs(package_name=args.package)
 

@@ -108,3 +108,32 @@ This ledger documents technical hurdles, anti-analysis evasion traps, and operat
 - **Root Cause:** Native checks bypass Java-level hooks by calling `libc.so` primitives directly.
 - **Solution:**
   - Enhanced `instrumentation/agent/bypass_antidebug.js` with native Interceptors for `ptrace` (spoofing return code 0 on `PTRACE_TRACEME`), `access` (spoofing `-1` on `/su` and `magisk` checks), and `kill` (logging caller backtrace on self-termination attempts).
+
+---
+
+### 11. Native Obfuscated String Decryption in Packed Native Libraries
+- **Problem / Hurdle:** Advanced infostealers (Ermac, Hook, Medusa) pack C2 URLs, decryption keys, and Telegram tokens inside native `.so` libraries (e.g., `lib/arm64-v8a/libnative-crypto.so`). Static DEX decompilation reveals only empty stubs or JNI wrappers, and running them dynamically on device risks early evasion.
+- **Root Cause:** C2 strings are decrypted in memory during runtime via custom unrolled XOR loops or `JNI_OnLoad` initialization routines.
+- **Solution:**
+  - Implemented `sample_triage/native_emulator.py` (Gate G0).
+  - Emulates AArch64 native code routines using Unicorn engine when available, with a pure-Python AArch64 emulation fallback for headless/dry-run environments.
+  - Automatically loads ELF PT_LOAD segments, sets up stack, TLS, and scratch memory, and emulates string decryption loops, extracting plaintext C2 endpoints with evidence tag `[C]`.
+
+---
+
+### 12. Omission of Canary Token Identifiers in Search Index
+- **Problem / Hurdle:** When malware exfiltrated the canary token identifier itself (e.g. `CANARY_SMS_OTP_9921`) rather than the inner payload values, the canary hunter failed to report a correlation hit.
+- **Root Cause:** In `parser_correlator/canary_hunter.py`, `field_key == "canary_token"` was explicitly skipped during target pattern generation.
+- **Solution:**
+  - Updated `load_canary_targets()` to index all string fields including `canary_token`.
+  - Ensures 100% correlation coverage whether malware transmits the token ID, synthetic private keys, seed words, or mock OTP codes.
+
+---
+
+### 13. Canonical Workspace Synchronization & Evidence Integrity
+- **Problem / Hurdle:** Automated dynamic analysis emitted deliverables into timestamped session directories (`sessions/session_<ts>_<pkg>/`), leaving the canonical `targets/<sample_hash>/` directory out-of-sync with Gate G1 through G5 deliverables.
+- **Root Cause:** Analysis runs generated artifacts in session-specific temporary folders without a final reconciliation step.
+- **Solution:**
+  - Implemented `sync_canonical_target_repo()` in `orchestrator.py`.
+  - Automatically updates `targets/<sample_hash>/` and `targets/current_sample/` with `TARGET.md` (gates marked PASS), `SOURCES.md`, `FACTS.md`, `STATIC_AUDIT.md`, `ANALYSIS.md`, `REPORT.md`, `LOG.md`, and `IOCS.json`.
+
