@@ -215,3 +215,10 @@ Format conforms to `dbug-step-rationale`. Timestamps are in Asia/Saigon (+07:00)
   **Evidence:** [C] `instrumentation/agent/bypass_antidebug.js`, `instrumentation/agent/crypto_dumper.js`, `sample_triage/triage_apk.py`, `instrumentation/frida_loader.py`, `orchestrator.py`, `requirements.txt`; [D] `tests/test_framework_e2e.py` (22/22 tests passing).
   **Revisit if:** Modern RASP updates introduce custom non-libc syscall wrappers for `/proc/self/status` or kernel-level seccomp filters.
 
+- **Step:** Merged `cline/7xmtqsz2` branch, installed Frida 17.24.0, and integrated dependency pre-flight validation.
+  **Decision:** Merged `origin/cline/7xmtqsz2` into `main`; executed `scripts/install_dependencies.sh` to install Frida 17.24.0, frida-tools 14.11.0, pyelftools 0.33, unicorn 2.1.4, and capstone 5.0.9 into the host Python environment; verified `MasterOrchestrator.check_dependencies()` pre-flight fail-fast check in `orchestrator.py`; verified test suite expansion to 24 tests in `tests/test_framework_e2e.py` (all 24 passing).
+  **Rationale:** Eliminates silent degradation of dynamic instrumentation when running non-dry-run dynamic analysis on live hardware, providing immediate remediation advice while maintaining full dry-run simulation compatibility.
+  **Evidence:** [C] `scripts/install_dependencies.sh`, `orchestrator.py`, `FIXES.md` (FIX-026), `LOG.md`; [D] `tests/test_framework_e2e.py` (24/24 tests passing).
+  **Revisit if:** Target Android phone requires a newer Frida release or custom Frida Gadget builds.
+
+

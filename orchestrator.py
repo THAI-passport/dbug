@@ -115,6 +115,55 @@ class MasterOrchestrator:
         else:
             self.sha256 = "simulated_" + "0" * 58
 
+    @staticmethod
+    def _version_gte(got: str, min_ver: str) -> bool:
+        """Compare dotted version strings without importing packaging."""
+        def norm(v):
+            return tuple(int(x) for x in str(v).split(".") if x.isdigit())
+        return norm(got) >= norm(min_ver)
+
+    def check_dependencies(self) -> bool:
+        """Validate core Python dependencies before pipeline execution.
+
+        Frida is mandatory for Gate G4 dynamic instrumentation. In non-dry-run
+        mode a missing/outdated dependency is a fail-fast condition so the
+        operator is never left wondering why instrumentation produced no data.
+        In dry-run mode the check degrades to a warning so the offline suite
+        can still execute.
+        """
+        required = {
+            "frida": "16.0.0",
+            "yaml": None,
+            "elftools": None,
+            "unicorn": None,
+            "capstone": None,
+        }
+        problems = []
+        for mod, min_ver in required.items():
+            try:
+                m = __import__(mod)
+                if min_ver:
+                    got = getattr(m, "__version__", "0.0.0")
+                    if not self._version_gte(got, min_ver):
+                        problems.append(f"{mod} {got} (need >= {min_ver})")
+            except ImportError:
+                problems.append(mod)
+
+        if problems:
+            detail = ", ".join(problems)
+            msg = (
+                "[!] Missing or outdated required dependencies: " + detail
+                + "\n    Install with: pip install -r requirements.txt"
+                + " (or scripts/install_dependencies.sh)"
+            )
+            if self.dry_run:
+                print(f"[-] Warning (dry-run): {msg}", file=sys.stderr)
+                return False
+            print(msg, file=sys.stderr)
+            sys.exit(1)
+        print(f"[*] Core dependencies verified: {', '.join(required)}")
+        return True
+
     def run_stage(self, stage_name, cmd_list, check=True):
         """Executes a framework command stage with status reporting."""
         print(f"\n{'=' * 65}")
@@ -144,6 +193,9 @@ class MasterOrchestrator:
 
         os.makedirs(self.output_dir, exist_ok=True)
         py_bin = sys.executable
+
+        # Pre-flight dependency validation (fail-fast off dry-run).
+        self.check_dependencies()
 
         # -------------------------------------------------------------
         # Stage 0: Sample Intake & Static Triage (Gate G0)

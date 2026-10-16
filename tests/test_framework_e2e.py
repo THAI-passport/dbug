@@ -20,6 +20,10 @@ import unittest
 PYTHON_BIN = sys.executable
 WORKSPACE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Import the orchestrator class so we can assert its dependency pre-flight directly.
+sys.path.insert(0, WORKSPACE_DIR)
+from orchestrator import MasterOrchestrator  # noqa: E402
+
 
 class TestDbugFramework(unittest.TestCase):
 
@@ -416,6 +420,31 @@ class TestDbugFramework(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "instrumentation_events.jsonl")))
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "REPORT.md")))
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "IOCS.json")))
+
+
+    def test_23_frida_import_and_version_floor(self):
+        """Gate G4: Frida Python module imports and meets the >= 16.0.0 floor."""
+        try:
+            import frida  # noqa: F401
+        except ImportError:
+            self.fail("frida Python module is not installed")
+
+        def ver_tuple(v):
+            return tuple(int(x) for x in str(v).split(".") if x.isdigit())
+
+        self.assertTrue(
+            ver_tuple(frida.__version__) >= ver_tuple("16.0.0"),
+            f"frida {frida.__version__} below required 16.0.0",
+        )
+
+    def test_24_orchestrator_dependency_preflight(self):
+        """Gate G4: Orchestrator dependency pre-flight passes (dry-run tolerant)."""
+        orch = MasterOrchestrator(
+            apk_path="samples/sample.apk",
+            package_name="com.example.malware",
+            dry_run=True,
+        )
+        self.assertTrue(orch.check_dependencies())
 
 
 if __name__ == "__main__":
