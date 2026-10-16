@@ -1,4 +1,4 @@
-# Verified Facts & Observations: 2636716e970a50e45f957a71d05f9e8f413367305528c5965a8a4c1f293a13b0
+# Verified Facts & Observations: simulated_0000000000000000000000000000000000000000000000000000000000
 
 All factual claims carry canonical evidence tags `[C]`, `[D]`, `[M]`, `[N]`, `[E]`.
 

@@ -294,7 +294,7 @@ def main():
     )
     parser.add_argument("--session-dir", default="./sessions/current_capture", help="Path to session directory")
     parser.add_argument("--package", default="com.example.malware", help="Package name")
-    parser.add_argument("--sha256", default="2636716e970a50e45f957a71d05f9e8f413367305528c5965a8a4c1f293a13b0", help="Sample SHA-256")
+    parser.add_argument("--sha256", default="unknown", help="Sample SHA-256")
     args = parser.parse_args()
 
     extractor = IOCExtractor(

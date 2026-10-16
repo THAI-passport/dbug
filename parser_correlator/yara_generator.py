@@ -14,7 +14,7 @@ import sys
 
 
 class YaraGenerator:
-    def __init__(self, session_dir, package_name="com.example.malware", sha256="2636716e970a50e45f957a71d05f9e8f413367305528c5965a8a4c1f293a13b0"):
+    def __init__(self, session_dir, package_name="com.example.malware", sha256="unknown"):
         self.session_dir = session_dir
         self.package_name = package_name
         self.sha256 = sha256
@@ -111,7 +111,7 @@ def main():
     parser = argparse.ArgumentParser(description="dbug Defensive YARA Rule Generator")
     parser.add_argument("--session-dir", default="./sessions/current_capture", help="Session directory")
     parser.add_argument("--package", default="com.example.malware", help="Package name")
-    parser.add_argument("--sha256", default="4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930", help="SHA256")
+    parser.add_argument("--sha256", default="unknown", help="SHA256")
     parser.add_argument("--output", default=None, help="Output YARA rule file path")
     args = parser.parse_args()
 

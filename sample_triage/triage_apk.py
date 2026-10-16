@@ -17,9 +17,10 @@ import zipfile
 
 
 class StaticTriager:
-    def __init__(self, apk_path, output_dir=None):
+    def __init__(self, apk_path, output_dir=None, dry_run=False):
         self.apk_path = apk_path
         self.output_dir = output_dir or "./targets/current_triage"
+        self.dry_run = dry_run
         self.metadata = {}
         self.hashes = {}
         self.packers = []
@@ -34,20 +35,17 @@ class StaticTriager:
     def compute_hashes(self):
         """Computes SHA-256, SHA-1, and MD5 hashes of the target binary."""
         if not os.path.exists(self.apk_path):
-            print(f"[!] Target APK not found at '{self.apk_path}'. Using simulated triage hashes.", file=sys.stderr)
-            sim_data = self.apk_path.encode("utf-8")
-            self.hashes = {
-                "sha256": hashlib.sha256(sim_data).hexdigest(),
-                "sha1": hashlib.sha1(sim_data).hexdigest(),
-                "md5": hashlib.md5(sim_data).hexdigest(),
-                "size_bytes": 4582910
-            }
+            if self.dry_run:
+                self.hashes = {
+                    "sha256": "simulated_" + "0" * 58,
+                    "sha1": "simulated_" + "0" * 58,
+                    "md5": "simulated_" + "0" * 58,
+                    "size_bytes": 0
+                }
+            else:
+                print(f"[!] Error: Target APK not found at '{self.apk_path}'. Cannot proceed without a real sample.", file=sys.stderr)
+                sys.exit(1)
             return
-
-        sha256 = hashlib.sha256()
-        sha1 = hashlib.sha1()
-        md5 = hashlib.md5()
-        size = os.path.getsize(self.apk_path)
 
         with open(self.apk_path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
@@ -149,6 +147,13 @@ class StaticTriager:
 
     def _generate_simulated_triage_data(self):
         """Generates realistic static triage data for test/dry-run pipelines."""
+        self.hashes = {
+            "sha256": "simulated_" + "0" * 58,
+            "sha1": "simulated_" + "0" * 58,
+            "md5": "simulated_" + "0" * 58,
+            "size_bytes": 0
+        }
+
         self.packers = []
         self.native_libs = ["lib/arm64-v8a/libnative-crypto.so"]
         self.dangerous_permissions = [
@@ -312,7 +317,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Run simulated triage without physical APK")
     args = parser.parse_args()
 
-    triager = StaticTriager(apk_path=args.apk, output_dir=args.output_dir)
+    triager = StaticTriager(apk_path=args.apk, output_dir=args.output_dir, dry_run=args.dry_run)
     triager.compute_hashes()
     if args.dry_run:
         triager._generate_simulated_triage_data()

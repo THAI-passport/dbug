@@ -29,16 +29,18 @@ except ImportError:
 
 
 def compute_sha256(file_path):
-    """Computes SHA-256 hash of a file if it exists, or returns deterministic sha256."""
-    if not file_path:
-        return hashlib.sha256(b"unknown_sample").hexdigest()
-    if os.path.exists(file_path):
-        h = hashlib.sha256()
-        with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(65536), b""):
-                h.update(chunk)
-        return h.hexdigest()
-    return hashlib.sha256(file_path.encode("utf-8")).hexdigest()
+    """Computes SHA-256 hash of a file if it exists.
+
+    Returns None when the file is missing (callers must handle this;
+    never fabricate a hash).
+    """
+    if not file_path or not os.path.exists(file_path):
+        return None
+    h = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def parse_lab_config(config_path):
@@ -82,7 +84,7 @@ def parse_lab_config(config_path):
 
 class MasterOrchestrator:
     def __init__(self, apk_path, package_name, duration=120, config_path="config/lab_config.yaml",
-                 output_dir=None, dry_run=False, profile="malware", interactive=False):
+                 output_dir=None, dry_run=False, profile="malware", interactive=False, apply_dev_hide=True):
         self.apk_path = apk_path
         self.package_name = package_name
         self.duration = duration
@@ -90,6 +92,7 @@ class MasterOrchestrator:
         self.dry_run = dry_run
         self.profile = profile.lower()
         self.interactive = interactive
+        self.apply_dev_hide = apply_dev_hide
 
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_dir = output_dir or f"./sessions/session_{ts}_{self.package_name}"
@@ -97,7 +100,20 @@ class MasterOrchestrator:
 
         dev_cfg = self.cfg.get("lab_environment", {}).get("device", {})
         self.serial = dev_cfg.get("serial") or None
-        self.sha256 = compute_sha256(self.apk_path) if self.apk_path else "0000000000000000000000000000000000000000000000000000000000000000"
+        # Derive real SHA-256 from the sample; never fabricate a hash.
+        if self.apk_path:
+            computed = compute_sha256(self.apk_path)
+            if computed is None:
+                if self.dry_run:
+                    self.sha256 = "simulated_" + "0" * 58
+                    print(f"[!] Warning: APK not found at '{self.apk_path}'; using simulated SHA-256 for dry-run.")
+                else:
+                    print(f"[!] Error: Target APK not found at '{self.apk_path}'. Cannot proceed without a real sample.", file=sys.stderr)
+                    sys.exit(1)
+            else:
+                self.sha256 = computed
+        else:
+            self.sha256 = "simulated_" + "0" * 58
 
     def run_stage(self, stage_name, cmd_list, check=True):
         """Executes a framework command stage with status reporting."""
@@ -138,6 +154,8 @@ class MasterOrchestrator:
             "--package", self.package_name,
             "--output-dir", self.output_dir
         ]
+        if self.dry_run:
+            g0_cmd.append("--dry-run")
         self.run_stage("Gate G0: Sample Intake & Static Triage", g0_cmd, check=False)
 
         # -------------------------------------------------------------
@@ -148,6 +166,25 @@ class MasterOrchestrator:
             g1_cmd.append("--dry-run")
         if self.serial:
             g1_cmd.extend(["--serial", self.serial])
+        # Push hide_dev_options.sh to device for Settings.Global spoofing
+        if self.apply_dev_hide:
+            push_hide_dev = [
+                "adb", "push", "device_cloaking/hide_dev_options.sh",
+                "/data/local/tmp/hide_dev_options.sh"
+            ]
+            if self.serial:
+                push_hide_dev.insert(2, "-s")
+                push_hide_dev.insert(3, self.serial)
+            if self.dry_run:
+                print(f"[DRY-RUN] {' '.join(push_hide_dev)}")
+            else:
+                subprocess.run(push_hide_dev, capture_output=True, text=True, check=False)
+            if os.path.exists("device_cloaking/hide_dev_options.sh"):
+                os.chmod("device_cloaking/hide_dev_options.sh", 0o755)
+
+            g1_cmd.append("--apply-dev-hide")
+
+
 
         if not self.run_stage("Gate G1: Pre-Flight Stealth Audit", g1_cmd, check=True):
             print("\n[!] HALT: Pre-flight stealth cloaking audit failed! Malware detonation aborted.", file=sys.stderr)
@@ -347,7 +384,8 @@ class MasterOrchestrator:
             print(f"C2 Protocol Spec:        {os.path.join(self.output_dir, 'C2_PROTOCOL.md')}")
             print(f"Family Attribution:      {os.path.join(self.output_dir, 'FAMILY_ATTRIBUTION.json')}")
             print(f"Extracted IOCs (JSON):   {os.path.join(self.output_dir, 'iocs.json')}")
-            print(f"Defensive YARA Rule:     {os.path.join(self.output_dir, f'Android_Infostealer_{re.sub(r'[^a-zA-Z0-9_]', '_', self.package_name)}_{self.sha256[:8]}.yar')}")
+            yara_rule_name = f"Android_Infostealer_{re.sub(r'[^a-zA-Z0-9_]', '_', self.package_name)}_{self.sha256[:8]}.yar"
+            print(f"Defensive YARA Rule:     {os.path.join(self.output_dir, yara_rule_name)}")
             print(f"STIX 2.1 Bundle:         {os.path.join(self.output_dir, 'threat_report_stix21.json')}")
             print(f"Executive Report (MD):   {os.path.join(self.output_dir, 'analysis_report.md')}")
 
@@ -583,10 +621,33 @@ def main():
     parser.add_argument("--interactive", action="store_true", help="Run interactive human-in-the-loop observation session")
     parser.add_argument("--config", default="config/lab_config.yaml", help="Path to lab_config.yaml")
     parser.add_argument("--output-dir", default=None, help="Custom output directory")
-    parser.add_argument("--sanitize", action="store_true", help="Run device state sanitization and teardown immediately without analysis")
-    parser.add_argument("--restore-props", action="store_true", help="When sanitizing, revert properties to standard dev mode defaults")
     parser.add_argument("--dry-run", action="store_true", help="Run end-to-end simulation across all gates")
+    parser.add_argument("--sanitize", action="store_true",
+                        help="Run device state sanitization (six-tier teardown) and exit")
+    parser.add_argument("--restore-props", action="store_true",
+                        help="Restore developer-default properties instead of verifying stealth state")
+    parser.add_argument("--no-dev-hide", dest="apply_dev_hide", action="store_false", default=True,
+                        help="Disable developer option hiding (HideDevMode is ON by default)")
+    parser.add_argument("--apply-dev-hide", dest="apply_dev_hide", action="store_true", default=True,
+                        help="Apply developer option hiding before analysis (ON by default)")
     args = parser.parse_args()
+
+    # --sanitize runs the six-tier device teardown and exits before any analysis.
+    if args.sanitize:
+        from sanitize_device_state import DeviceSanitizer, parse_lab_config as _parse_cfg
+        cfg = _parse_cfg(args.config)
+        dev_cfg = cfg.get("lab_environment", {}).get("device", {})
+        serial = dev_cfg.get("serial") or None
+        use_root = dev_cfg.get("use_root", True)
+        sanitizer = DeviceSanitizer(
+            serial=serial,
+            use_root=use_root,
+            dry_run=args.dry_run,
+            package_name=args.package,
+            restore_props=args.restore_props,
+        )
+        ok = sanitizer.run_all(args.config)
+        sys.exit(0 if ok else 1)
 
     cfg = parse_lab_config(args.config)
     sample_cfg = cfg.get("lab_environment", {}).get("target_sample", {})
@@ -618,7 +679,8 @@ def main():
         output_dir=args.output_dir,
         dry_run=args.dry_run,
         profile=profile,
-        interactive=args.interactive
+        interactive=args.interactive,
+        apply_dev_hide=args.apply_dev_hide
     )
 
     orchestrator.execute_pipeline()

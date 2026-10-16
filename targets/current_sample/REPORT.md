@@ -1,6 +1,6 @@
 # Comprehensive Mobile Security, Privacy & Threat Assessment: com.example.malware
 
-- **Sample SHA-256:** `81aba45333ed21a5856987fab8a0f0b4009058c52154a4bbabfa51c3d5a95e63`
+- **Sample SHA-256:** `simulated_0000000000000000000000000000000000000000000000000000000000`
 - **Package Name:** `com.example.malware`
 - **Operational Profile:** `all`
 - **Date:** 2026-10-16

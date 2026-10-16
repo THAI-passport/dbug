@@ -50,16 +50,23 @@ def parse_lab_config(config_path):
 
 
 class StealthAuditor:
-    def __init__(self, serial=None, dry_run=False):
+    def __init__(self, serial=None, dry_run=False, use_root=True):
         self.serial = serial
         self.dry_run = dry_run
+        self.use_root = use_root
 
-    def run_adb(self, cmd_args, check=False):
-        """Executes an ADB command with optional serial routing."""
+    def run_adb(self, cmd_args, check=False, as_root=False):
+        """Executes an ADB command with optional serial routing and root elevation."""
         base = ["adb"]
         if self.serial:
             base.extend(["-s", self.serial])
-        full_cmd = base + cmd_args
+
+        if as_root and self.use_root:
+            effective_args = cmd_args[1:] if cmd_args and cmd_args[0] == "shell" else cmd_args
+            inner_cmd = " ".join(shlex.quote(arg) for arg in effective_args)
+            full_cmd = base + ["shell", "su", "-c", inner_cmd]
+        else:
+            full_cmd = base + cmd_args
 
         if self.dry_run:
             cmd_str = " ".join(cmd_args)
@@ -87,6 +94,14 @@ class StealthAuditor:
                 return "0"
             if "settings get global development_settings_enabled" in cmd_str:
                 return "0"
+            if "settings get global http_proxy" in cmd_str:
+                return ""
+            if "settings get global global_http_proxy_host" in cmd_str:
+                return ""
+            if "ls -1 /data/misc/user/0/cacerts-added/" in cmd_str:
+                return ""
+            if "ls -1 /data/misc/keychain/cacerts-added/" in cmd_str:
+                return ""
             if "ip -o link show" in cmd_str:
                 return "1: lo: <LOOPBACK> \n2: wlan0: <BROADCAST,MULTICAST,UP> "
             if "/proc/net/tcp" in cmd_str:
@@ -130,13 +145,22 @@ class StealthAuditor:
         # Execute via su -c
         out = self.run_adb(["shell", "su", "-c", "sh /data/local/tmp/apply_stealth_props.sh apply"])
         print(out)
+
+        # Apply HideDevMode (Settings.Global developer options hiding) by default
+        hide_dev_path = "device_cloaking/hide_dev_options.sh"
+        if os.path.exists(hide_dev_path):
+            self.run_adb(["push", hide_dev_path, "/data/local/tmp/hide_dev_options.sh"])
+            self.run_adb(["shell", "chmod", "755", "/data/local/tmp/hide_dev_options.sh"])
+            dev_out = self.run_adb(["shell", "su", "-c", "sh /data/local/tmp/hide_dev_options.sh apply"])
+            print(dev_out)
         return True
 
     def restore_props(self, script_path="device_cloaking/apply_stealth_props.sh"):
-        """Reverts stealth properties to standard developer debugging state."""
+        """Reverts stealth properties and developer options to standard developer debugging state."""
         print("[*] Restoring standard developer debug properties on device...")
         if self.dry_run:
             print("[DRY-RUN] adb shell su -c 'sh /data/local/tmp/apply_stealth_props.sh restore'")
+            print("[DRY-RUN] adb shell su -c 'sh /data/local/tmp/hide_dev_options.sh restore'")
             print("[+] [DRY-RUN] Properties restored to developer defaults.")
             return True
 
@@ -144,6 +168,13 @@ class StealthAuditor:
         self.run_adb(["shell", "chmod", "755", "/data/local/tmp/apply_stealth_props.sh"])
         out = self.run_adb(["shell", "su", "-c", "sh /data/local/tmp/apply_stealth_props.sh restore"])
         print(out)
+
+        hide_dev_path = "device_cloaking/hide_dev_options.sh"
+        if os.path.exists(hide_dev_path):
+            self.run_adb(["push", hide_dev_path, "/data/local/tmp/hide_dev_options.sh"])
+            self.run_adb(["shell", "chmod", "755", "/data/local/tmp/hide_dev_options.sh"])
+            dev_out = self.run_adb(["shell", "su", "-c", "sh /data/local/tmp/hide_dev_options.sh restore"])
+            print(dev_out)
         return True
 
     def audit(self):
@@ -218,21 +249,32 @@ class StealthAuditor:
         else:
             print("  [+] No system HTTP proxy property configured (PASS)")
 
-        global_proxy = self.run_adb(["shell", "settings", "get", "global", "http_proxy"])
-        if global_proxy and global_proxy not in ("null", ":0", ""):
-            failures.append(f"Settings.Global http_proxy is configured: '{global_proxy}'")
-            print(f"  [-] Settings.Global.http_proxy = '{global_proxy}' [FAIL]")
-        else:
-            print("  [+] Settings.Global http_proxy is clean (PASS)")
+        # --- Settings.Global http_proxy / global_http_proxy_host ---
+        for setting in ["http_proxy", "global_http_proxy_host"]:
+            proxy_setting = self.run_adb(["shell", "settings", "get", "global", setting])
+            if proxy_setting and proxy_setting.strip() and proxy_setting.strip() not in ("null", ":0", ""):
+                failures.append(f"Settings.Global.{setting} is set to '{proxy_setting.strip()}'")
+                print(f"  [-] Settings.Global.{setting} = '{proxy_setting.strip()}' [FAIL]")
+            else:
+                print(f"  [+] Settings.Global.{setting} is unset (PASS)")
 
-        # Audit user-installed CA certificates
-        user_certs = self.run_adb(["shell", "su", "-c", "ls /data/misc/user/0/cacerts-added 2>/dev/null"])
-        if user_certs and "No such" not in user_certs and user_certs.strip():
-            cert_list = [c.strip() for c in user_certs.splitlines() if c.strip()]
-            failures.append(f"User-installed CA certificate(s) detected: {cert_list}. Run sanitize_device_state.py!")
-            print(f"  [-] User-installed CA certificates detected: {cert_list} [FAIL]")
-        else:
-            print("  [+] No user-installed CA certificates in user credential store (PASS)")
+        # --- Rogue user-installed CA certificates ---
+        ca_dirs = ["/data/misc/user/0/cacerts-added/", "/data/misc/keychain/cacerts-added/"]
+        rogue_cas = []
+        for ca_dir in ca_dirs:
+            listing = self.run_adb(["shell", "ls", "-1", ca_dir], as_root=True)
+            if listing and "No such file" not in listing and "No such file or directory" not in listing:
+                certs = [c for c in listing.split() if c.strip()]
+                if certs:
+                    rogue_cas.extend(certs)
+                    failures.append(f"Rogue user-installed CA certificates found in {ca_dir}: {', '.join(certs)}")
+                    print(f"  [-] Rogue user CA certs in {ca_dir}: {len(certs)} certificate(s) [FAIL]")
+                else:
+                    print(f"  [+] No user CA certificates in {ca_dir} (PASS)")
+            else:
+                print(f"  [+] No user CA certificate directory at {ca_dir} (PASS)")
+        if rogue_cas:
+            print("    [!] Rogue user CA certificates will cause TLS pinning failure and RASP/malware detection.")
 
         # ---------------------------------------------------------
         # Layer 4: Port Hygiene (Frida & Remote ADB)
@@ -298,14 +340,17 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Simulate audit checks without physical hardware")
     parser.add_argument("--push-and-apply", action="store_true", help="Push and apply stealth properties via root before auditing")
     parser.add_argument("--restore", action="store_true", help="Revert device properties to developer defaults")
+    parser.add_argument("--no-dev-hide", dest="apply_dev_hide", action="store_false", default=True, help="Disable developer option hiding (HideDevMode is ON by default)")
+    parser.add_argument("--apply-dev-hide", dest="apply_dev_hide", action="store_true", default=True, help="Apply developer option hiding before auditing (ON by default)")
     args = parser.parse_args()
 
     # Load configuration
     cfg = parse_lab_config(args.config)
     dev_cfg = cfg.get("lab_environment", {}).get("device", {})
     serial = args.serial or dev_cfg.get("serial") or None
+    use_root = dev_cfg.get("use_root", True)
 
-    auditor = StealthAuditor(serial=serial, dry_run=args.dry_run)
+    auditor = StealthAuditor(serial=serial, dry_run=args.dry_run, use_root=use_root)
 
     if args.restore:
         ok = auditor.restore_props()
@@ -313,6 +358,20 @@ def main():
 
     if args.push_and_apply:
         auditor.push_and_apply_props()
+    elif args.apply_dev_hide:
+        if args.dry_run:
+            print("[DRY-RUN] Would apply developer option hiding via hide_dev_options.sh")
+        else:
+            hide_dev_path = "device_cloaking/hide_dev_options.sh"
+            if os.path.exists(hide_dev_path):
+                auditor.run_adb(["push", hide_dev_path, "/data/local/tmp/hide_dev_options.sh"])
+                auditor.run_adb(["shell", "chmod", "755", "/data/local/tmp/hide_dev_options.sh"])
+                res = auditor.run_adb(["shell", "su", "-c", "sh /data/local/tmp/hide_dev_options.sh apply"])
+                print(res)
+            else:
+                auditor.run_adb(["shell", "settings", "put", "global", "adb_enabled", "0"], as_root=True)
+                auditor.run_adb(["shell", "settings", "put", "global", "development_settings_enabled", "0"], as_root=True)
+                print("[+] Settings.Global adb_enabled=0, development_settings_enabled=0 applied.")
 
     passed = auditor.audit()
     sys.exit(0 if passed else 1)

@@ -1,8 +1,8 @@
 # Dynamic Malware Analysis & Threat Intelligence Report
 
 - **Package Name:** `com.example.malware`
-- **SHA-256 Hash:** `81aba45333ed21a5856987fab8a0f0b4009058c52154a4bbabfa51c3d5a95e63`
-- **Analysis Timestamp:** 2026-10-16 15:40:58 UTC
+- **SHA-256 Hash:** `simulated_0000000000000000000000000000000000000000000000000000000000`
+- **Analysis Timestamp:** 2026-10-16 16:42:50 UTC
 - **Environment:** Physical Android Hardware (Cloaked, eBPF Uprobes, Out-of-Band Gateway)
 
 ---

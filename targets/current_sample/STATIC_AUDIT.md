@@ -1,9 +1,9 @@
 # Static Malware Triage & Anti-Analysis Audit (Gate G0)
 
 - **Target Sample:** `sample.apk`
-- **SHA-256:** `2636716e970a50e45f957a71d05f9e8f413367305528c5965a8a4c1f293a13b0`
-- **MD5:** `d41d8cd98f00b204e9800998ecf8427e`
-- **File Size:** 4582910 bytes
+- **SHA-256:** `simulated_0000000000000000000000000000000000000000000000000000000000`
+- **MD5:** `simulated_0000000000000000000000000000000000000000000000000000000000`
+- **File Size:** 0 bytes
 
 ---
 

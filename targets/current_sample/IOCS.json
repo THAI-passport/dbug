@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "generated_at": "2026-10-16T15:40:58.772858+00:00",
+    "generated_at": "2026-10-16T16:42:50.986290+00:00",
     "package_name": "com.example.malware",
-    "sha256": "81aba45333ed21a5856987fab8a0f0b4009058c52154a4bbabfa51c3d5a95e63"
+    "sha256": "simulated_0000000000000000000000000000000000000000000000000000000000"
   },
   "network_indicators": {
     "c2_ipv4": [
@@ -25,7 +25,7 @@
     "observed_keys": [
       {
         "algorithm": "AES/CBC/PKCS5Padding",
-        "key_hex": "2636716e970a50e45f957a71d05f9e8f413367305528c5965a8a4c1f293a13b0",
+        "key_hex": "c8f1e2d3b4a5968778695a4b3c2d1e0fe1d2c3b4a5968778695a4b3c2d1e0f01",
         "iv_hex": "00112233445566778899aabbccddeeff"
       }
     ]
@@ -40,7 +40,7 @@
         "field": "otp_code",
         "encoding": "raw",
         "matched_value": "984217",
-        "timestamp": 1792165258650,
+        "timestamp": 1792168971144,
         "context": "Cipher event: AES/CBC/PKCS5Padding (Line 4)",
         "evidence_tag": "[M]"
       },
@@ -51,7 +51,7 @@
         "field": "otp_code",
         "encoding": "hex",
         "matched_value": "984217",
-        "timestamp": 1792165258650,
+        "timestamp": 1792168971144,
         "context": "Cipher event: AES/CBC/PKCS5Padding (Line 4)",
         "evidence_tag": "[M]"
       },
