@@ -38,8 +38,11 @@ lab_environment:
     frida:
       enabled: true
       port: 38921                         # Non-default stealth port (masks default 27042)
-      remote_daemon_name: "hl_daemon"
+      remote_daemon_name: "hl_daemon"     # Renamed frida-server process on device
       spawn: true                         # Spawn fresh process vs attach
+      # Host path to the Android ARM64 frida-server binary (from frida/releases).
+      # Used by device_cloaking/frida_server_setup.sh --binary.
+      frida_server_binary: ""             # e.g. "$HOME/frida-server-17.2.0-android-arm64"
       scripts:
         - "instrumentation/agent/bypass_antidebug.js"
         - "instrumentation/agent/crypto_dumper.js"

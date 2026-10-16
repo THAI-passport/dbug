@@ -57,14 +57,25 @@ def parse_lab_config(config_path):
     return config
 
 
+# Stealth requirement: never default to the stock Frida port 27042, which
+# infostealers detect by scanning /proc/net/tcp.
+STEALTH_FRIDA_PORT = 38921
+DEFAULT_FRIDA_PORT = 27042
+MAX_CONNECT_RETRIES = 5
+CONNECT_RETRY_DELAY = 2  # seconds
+
+
 class FridaLoader:
     def __init__(self, package_name, port=38921, host="127.0.0.1",
-                 log_path="instrumentation_events.jsonl", dry_run=False):
+                 log_path="instrumentation_events.jsonl", dry_run=False,
+                 daemon_name="hl_daemon", frida_version=None):
         self.package_name = package_name
         self.port = port
         self.host = host
         self.log_path = log_path
         self.dry_run = dry_run
+        self.daemon_name = daemon_name
+        self.frida_version = frida_version
         self.session = None
         self.device = None
         self.pid = None
@@ -80,6 +91,31 @@ class FridaLoader:
             else:
                 print(f"[-] Warning: Agent script not found: {path}", file=sys.stderr)
         return "\n\n".join(bundle)
+
+    def _validate_port(self):
+        """Warn if the configured Frida port is the default 27042 (stealth risk)."""
+        if self.port == DEFAULT_FRIDA_PORT:
+            print(f"[-] STEALTH RISK: Frida port {self.port} is the default; "
+                  f"targets scanning /proc/net/tcp will detect it. Use {STEALTH_FRIDA_PORT}.")
+            return False
+        return True
+
+    def _connect_with_retry(self):
+        """Connect to the remote Frida daemon with exponential backoff retries."""
+        import frida
+        mgr = frida.get_device_manager()
+        last_err = None
+        for attempt in range(1, MAX_CONNECT_RETRIES + 1):
+            try:
+                device = mgr.add_remote_device(f"{self.host}:{self.port}")
+                return device
+            except Exception as e:
+                last_err = e
+                if attempt < MAX_CONNECT_RETRIES:
+                    print(f"    [-] Connect attempt {attempt}/{MAX_CONNECT_RETRIES} "
+                          f"failed: {e}. Retrying in {CONNECT_RETRY_DELAY}s ...")
+                    time.sleep(CONNECT_RETRY_DELAY)
+        raise last_err
 
     def on_message(self, message, data):
         """Callback processing messages from in-process Frida agents."""
@@ -168,12 +204,22 @@ class FridaLoader:
                 print("[-] Notice: 'frida' Python module not installed. Falling back to simulation mode.", file=sys.stderr)
             return self.run_dry_run(duration=min(duration, 5))
 
-        print(f"[*] Connecting to Frida daemon at {self.host}:{self.port}...")
+        # Stealth: never operate on the default Frida port 27042.
+        if not self._validate_port():
+            print("[-] Aborting: default Frida port detected. Reconfigure lab_config.yaml "
+                  f"telemetry.frida.port to {STEALTH_FRIDA_PORT}.", file=sys.stderr)
+            return False
+
+        print(f"[*] Frida client version: {self.frida_version or 'unknown'}")
+        print(f"[*] Frida daemon name: {self.daemon_name}")
+        print(f"[*] Connecting to Frida daemon at {self.host}:{self.port} (retries: {MAX_CONNECT_RETRIES})...")
         try:
-            mgr = frida.get_device_manager()
-            self.device = mgr.add_remote_device(f"{self.host}:{self.port}")
+            self.device = self._connect_with_retry()
         except Exception as e:
-            print(f"[!] Failed to connect to Frida remote device: {e}", file=sys.stderr)
+            print(f"[!] Failed to connect to Frida remote device after "
+                  f"{MAX_CONNECT_RETRIES} attempts: {e}", file=sys.stderr)
+            print("    Remediation: run device_cloaking/frida_server_setup.sh install+start "
+                  "on the rooted test device.", file=sys.stderr)
             return False
 
         print(f"[*] Spawning target package '{self.package_name}'...")
@@ -244,8 +290,9 @@ def main():
     frida_cfg = cfg.get("lab_environment", {}).get("telemetry", {}).get("frida", {})
 
     package_name = args.package or sample_cfg.get("package_name") or "com.example.malware"
-    port = args.port or frida_cfg.get("port", 38921)
+    port = args.port or frida_cfg.get("port", STEALTH_FRIDA_PORT)
     duration = args.duration
+    daemon_name = frida_cfg.get("remote_daemon_name", "hl_daemon")
 
     script_paths = [
         "instrumentation/agent/bypass_antidebug.js",
@@ -257,7 +304,9 @@ def main():
         package_name=package_name,
         port=port,
         log_path=args.output,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        daemon_name=daemon_name,
+        frida_version=frida.__version__ if HAS_FRIDA else None
     )
 
     def sig_handler(sig, frame):

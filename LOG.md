@@ -63,7 +63,19 @@ Chronological log of bugs, regressions, performance quirks, and operational obse
 
 ## [2026-10-16] Push constraint (environmental)
 
-- `.github/workflows/ci.yml` was prepared locally and validated (workflow YAML structure reviewed; equivalent checks run locally: py_compile, bash -n, 17/17 e2e tests). It is NOT in commit 317af30 because `git push` to origin cline/vw3w3wp1 was rejected: the GitHub App token lacks the `workflows` permission required to create or update `.github/workflows/ci.yml` (`refusing to allow a GitHub App to create or update workflow ... without workflows permission`). A maintainer with `workflows` permission can add the workflow file manually; its contents are recorded in fork-v1.md T-06 and the prior commit diff.
+- `.github/workflows/ci.yml` was prepared locally and validated (workflow YAML structure reviewed; equivalent checks run locally: py_compile, bash -n, 20/20 e2e tests). It is NOT in commit 6c918d8 because `git push` to origin cline/vw3w3wp1 was rejected: the GitHub App token lacks the `workflows` permission required to create or update `.github/workflows/ci.yml` (`refusing to allow a GitHub App to create or update workflow ... without workflows permission`). A maintainer with `workflows` permission can add the workflow file manually; its contents are recorded in fork-v1.md T-06 and the prior commit diff.
+
+## [2026-10-16] Frida runtime instrumentation hardening (Gate G4)
+
+- **Script:** instrumentation/frida_loader.py
+  - **Change:** Added connection retry with backoff (5 attempts, 2s delay), stealth port validation (refuses default port 27042; mandates 38921), Frida client version reporting, daemon-name config from lab_config.yaml telemetry.frida.remote_daemon_name, and remediation guidance pointing to frida_server_setup.sh. run() aborts on default port; _connect_with_retry() used for remote device connection.
+- **Script:** device_cloaking/frida_server_setup.sh
+  - **New:** Device-side Frida server manager: install (push + rename to hl_daemon + chmod), start (port 38921), stop, status. Supports --dry-run, --binary, --port, --name, --serial.
+- **Script:** config/lab_config.yaml
+  - **Change:** Added telemetry.frida.frida_server_binary field for host path to Android ARM64 frida-server binary.
+- **Script:** tests/test_framework_e2e.py
+  - **Change:** Added test_18 (frida client importable + version), test_19 (frida_server_setup.sh bash -n), test_20 (stealth port constants present). Suite now 20 tests.
+- **Host:** Installed frida 17.24.0 Python client via pip (frida package imports and get_device_manager available).
 
 
 

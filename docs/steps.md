@@ -191,5 +191,14 @@ Format conforms to `dbug-step-rationale`. Timestamps are in Asia/Saigon (+07:00)
   **Evidence:** [C] fork-v1.md; [C] device_cloaking/verify_stealth_state.py (Layer 6 + config-driven stealth_properties); [C] config/lab_config.yaml (lsposed + stealth_properties blocks); [C] device_cloaking/HIDEDEVMODE_INTEGRATION.md; [C] tests/test_framework_e2e.py (test_17); [C] .github/workflows/ci.yml.
   **Revisit if:** HideDevMode package id changes upstream, hide_dev_mode_required is flipped to true in lab configs, or a single cohesive stealth framework matching G0-G5 appears.
 
+- **Step:** Frida runtime instrumentation hardening (Gate G4).
+  **Decision:** Installed Frida 17.24.0 client on the host and hardened instrumentation/frida_loader.py: connection retry with backoff (MAX_CONNECT_RETRIES=5), stealth port validation (refuses default port 27042; mandates 38921), Frida client version reporting, daemon-name config from lab_config.yaml, and clear remediation guidance pointing to frida_server_setup.sh.
+  **Decision:** Added device_cloaking/frida_server_setup.sh to push, rename (hl_daemon), start, stop, and status the Frida server on the rooted device on the stealth port, per AGENTS.md (non-standard port + renamed binary to avoid /proc/net/tcp fingerprinting).
+  **Decision:** Added config/lab_config.yaml telemetry.frida.frida_server_binary field for the host path to the Android ARM64 frida-server binary.
+  **Decision:** Added tests test_18 (frida client importable), test_19 (frida_server_setup.sh shell syntax), test_20 (stealth port constants present); e2e suite now 20 tests.
+  **Rationale:** Frida is the last-resort in-process instrumentation layer; hardening its connection reliability and enforcing the non-default port prevents both silent failures and stealth-compromising default-port exposure.
+  **Evidence:** [C] instrumentation/frida_loader.py; [C] device_cloaking/frida_server_setup.sh; [C] config/lab_config.yaml; [C] tests/test_framework_e2e.py (test_18-20).
+  **Revisit if:** Frida server release version changes (update frida_server_binary example), or device lacks root to run frida-server.
+
 
 
