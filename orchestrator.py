@@ -341,7 +341,8 @@ class MasterOrchestrator:
             print(f"C2 Protocol Spec:        {os.path.join(self.output_dir, 'C2_PROTOCOL.md')}")
             print(f"Family Attribution:      {os.path.join(self.output_dir, 'FAMILY_ATTRIBUTION.json')}")
             print(f"Extracted IOCs (JSON):   {os.path.join(self.output_dir, 'iocs.json')}")
-            print(f"Defensive YARA Rule:     {os.path.join(self.output_dir, f'Android_Infostealer_{re.sub(r'[^a-zA-Z0-9_]', '_', self.package_name)}_{self.sha256[:8]}.yar')}")
+            yara_rule_name = f"Android_Infostealer_{re.sub(r'[^a-zA-Z0-9_]', '_', self.package_name)}_{self.sha256[:8]}.yar"
+            print(f"Defensive YARA Rule:     {os.path.join(self.output_dir, yara_rule_name)}")
             print(f"STIX 2.1 Bundle:         {os.path.join(self.output_dir, 'threat_report_stix21.json')}")
             print(f"Executive Report (MD):   {os.path.join(self.output_dir, 'analysis_report.md')}")
 
