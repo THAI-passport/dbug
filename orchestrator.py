@@ -141,6 +141,14 @@ class MasterOrchestrator:
         # -------------------------------------------------------------
         # Stage 1: Pre-Flight Stealth Audit (Gate G1)
         # -------------------------------------------------------------
+        lsposed_cfg = (
+            self.cfg.get("lab_environment", {}).get("telemetry", {}).get("lsposed", {})
+        )
+        if lsposed_cfg.get("hide_dev_mode_required", False):
+            print(
+                "[!] G1 hard requirement: LSPosed HideDevMode module must be installed "
+                "and enabled (hide_dev_mode_required: true in lab_config.yaml)."
+            )
         g1_cmd = [py_bin, "device_cloaking/verify_stealth_state.py", "--config", self.config_path]
         if self.dry_run:
             g1_cmd.append("--dry-run")
@@ -341,7 +349,8 @@ class MasterOrchestrator:
             print(f"C2 Protocol Spec:        {os.path.join(self.output_dir, 'C2_PROTOCOL.md')}")
             print(f"Family Attribution:      {os.path.join(self.output_dir, 'FAMILY_ATTRIBUTION.json')}")
             print(f"Extracted IOCs (JSON):   {os.path.join(self.output_dir, 'iocs.json')}")
-            print(f"Defensive YARA Rule:     {os.path.join(self.output_dir, f'Android_Infostealer_{re.sub(r'[^a-zA-Z0-9_]', '_', self.package_name)}_{self.sha256[:8]}.yar')}")
+            yara_name = f"Android_Infostealer_{re.sub(r'[^a-zA-Z0-9_]', '_', self.package_name)}_{self.sha256[:8]}.yar"
+            print(f"Defensive YARA Rule:     {os.path.join(self.output_dir, yara_name)}")
             print(f"STIX 2.1 Bundle:         {os.path.join(self.output_dir, 'threat_report_stix21.json')}")
             print(f"Executive Report (MD):   {os.path.join(self.output_dir, 'analysis_report.md')}")
 

@@ -183,5 +183,13 @@ Format conforms to `dbug-step-rationale`. Timestamps are in Asia/Saigon (+07:00)
   **Evidence:** [C] `.claude/skills/dbug-privacy-audit/SKILL.md`, `.claude/skills/dbug-appsec-masvs/SKILL.md`.
   **Revisit if:** New mobile security standards (e.g. MASVS v2 updates) are published.
 
+- **Step:** Fork v1 robustness & component integration (branch cline/vw3w3wp1).
+  **Decision:** Fork dbug itself (THAI-passport/dbug) as the v1 base — no single open-source repository replicates the complete G0–G5 stealth pipeline; MobSF is not stealth-focused and Objection is not an automated pipeline. Integrate dedicated upstream components instead: dongdevcom/HideDevMode for Gate G1 developer-option hiding (system_server Settings.Global spoof) and gojue/eCapture for Gate G3 eBPF TLS capture (track upstream releases, pin on-device binary by version + SHA-256).
+  **Decision:** Replaced shell-only developer-option hiding with Layer 6 LSPosed HideDevMode module audit in verify_stealth_state.py (package presence + enabled/disabled state, config-driven package id via telemetry.lsposed, dry-run simulation, non-fatal unless hide_dev_mode_required: true). Layer 1 stealth properties now read from the new config stealth_properties block with hardcoded fallback. Added device_cloaking/HIDEDEVMODE_INTEGRATION.md install/enable/verify/remediation runbook and documented the two-layer model in apply_stealth_props.sh.
+  **Decision:** Fixed orchestrator.py SyntaxError (nested quotes in f-string at line 344) that blocked all pipeline execution; added G1 hint when hide_dev_mode_required is true. Added offline GitHub Actions CI (.github/workflows/ci.yml: py_compile all Python scripts, bash -n all shell scripts, dry-run e2e suite — no device, no network, no secrets). Added test_17 HideDevMode pre-flight coverage to tests/test_framework_e2e.py.
+  **Rationale:** dbug's combination of canary seeding + transparent ap0 gateway + eBPF TLS + multi-profile (malware/privacy/appsec) reporting with evidence-tagged documentation is unique; hardening the weakest pre-flight layer (developer-option hiding) and gating execution on CI prevents degraded analysis runs.
+  **Evidence:** [C] fork-v1.md; [C] device_cloaking/verify_stealth_state.py (Layer 6 + config-driven stealth_properties); [C] config/lab_config.yaml (lsposed + stealth_properties blocks); [C] device_cloaking/HIDEDEVMODE_INTEGRATION.md; [C] tests/test_framework_e2e.py (test_17); [C] .github/workflows/ci.yml.
+  **Revisit if:** HideDevMode package id changes upstream, hide_dev_mode_required is flipped to true in lab configs, or a single cohesive stealth framework matching G0–G5 appears.
+
 
 

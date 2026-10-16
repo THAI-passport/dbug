@@ -311,5 +311,17 @@ class TestDbugFramework(unittest.TestCase):
             self.assertIn("Interactive capture session simulated", res.stdout)
 
 
+    def test_17_hide_devmode_preflight_layer(self):
+        """Gate G1: Layer 6 LSPosed HideDevMode module audit is present and passes in dry-run."""
+        res = self.run_cmd([
+            PYTHON_BIN, "device_cloaking/verify_stealth_state.py", "--dry-run"
+        ])
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("Layer 6: Auditing LSPosed HideDevMode Module", res.stdout)
+        self.assertIn("LSPosed module package", res.stdout)
+        self.assertIn("simulated: INSTALLED, ENABLED", res.stdout)
+        self.assertIn("ALL PRE-FLIGHT STEALTH CHECKS PASSED", res.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
