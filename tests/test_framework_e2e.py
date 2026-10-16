@@ -421,13 +421,15 @@ class TestDbugFramework(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "REPORT.md")))
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "IOCS.json")))
 
-
     def test_23_frida_import_and_version_floor(self):
-        """Gate G4: Frida Python module imports and meets the >= 16.0.0 floor."""
+        """Gate G4: Frida Python module imports, provides device manager, and meets the >= 16.0.0 floor."""
         try:
             import frida  # noqa: F401
         except ImportError:
             self.fail("frida Python module is not installed")
+
+        self.assertTrue(hasattr(frida, "__version__"))
+        self.assertTrue(hasattr(frida, "get_device_manager"))
 
         def ver_tuple(v):
             return tuple(int(x) for x in str(v).split(".") if x.isdigit())
@@ -445,6 +447,30 @@ class TestDbugFramework(unittest.TestCase):
             dry_run=True,
         )
         self.assertTrue(orch.check_dependencies())
+
+    def test_25_frida_server_setup_syntax(self):
+        """Gate G4: device_cloaking/frida_server_setup.sh passes shell syntax check."""
+        res = self.run_cmd(["bash", "-n", "device_cloaking/frida_server_setup.sh"])
+        self.assertEqual(res.returncode, 0)
+
+    def test_26_frida_loader_default_port_rejected(self):
+        """Gate G4: Frida loader refuses the default port 27042 (stealth requirement)."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ev_file = os.path.join(tmp_dir, "events.jsonl")
+            res = self.run_cmd([
+                PYTHON_BIN, "instrumentation/frida_loader.py",
+                "--package", "com.example.malware",
+                "--port", "27042",
+                "--duration", "1",
+                "--output", ev_file,
+                "--dry-run"
+            ])
+            self.assertEqual(res.returncode, 0)
+        with open("instrumentation/frida_loader.py", "r", encoding="utf-8") as f:
+            src = f.read()
+        self.assertIn("DEFAULT_FRIDA_PORT = 27042", src)
+        self.assertIn("STEALTH_FRIDA_PORT = 38921", src)
+        self.assertIn("_validate_port", src)
 
 
 if __name__ == "__main__":

@@ -38,7 +38,7 @@ No other repository is forked as the base because none covers canary seeding, tr
 | G1 | Device Cloaking & Pre-Flight | device_cloaking/apply_stealth_props.sh + verify_stealth_state.py | HideDevMode (dongdevcom/HideDevMode) LSPosed module for Settings.Global spoofing | New Layer 6 audit: HideDevMode package presence + enabled state; halts G1 when hide_dev_mode_required: true |
 | G2 | Canary Data Seeding | config/seed_canaries.py, mock_canaries.json | None (canary design is dbug-native) | Idempotent seeding, dry-run CI |
 | G3 | Zero-Footprint Capture | network_capture/gateway_setup.sh, ecapture_runner.py | gojue/eCapture upstream binary pinned by version + SHA-256 | Graceful shutdown retained; offline CI validates script syntax |
-| G4 | Dynamic Instrumentation | instrumentation/frida_loader.py + agent JS hooks | Objection patterns referenced for socket/API tracing (no code fork) | Non-default port 38921 + renamed hl_daemon retained; dry-run CI |
+| G4 | Dynamic Instrumentation | instrumentation/frida_loader.py + agent JS hooks + device_cloaking/frida_server_setup.sh | Objection patterns referenced for socket/API tracing (no code fork); gojue/eCapture not applicable | Frida server manager (push/rename/start/stop), connection retry with backoff, default-port refusal (mandates 38921), renamed hl_daemon binary, dry-run CI |
 | G5 | Correlation & Reporting | parser_correlator/*.py (STIX 2.1, YARA, OpenAPI 3.0, privacy, appsec) | None (dbug-native) | Profile-tailored reports retained; CI validates all parsers |
 
 ---
@@ -50,11 +50,14 @@ No other repository is forked as the base because none covers canary seeding, tr
 - [x] T-03 Extend config/lab_config.yaml: lsposed block (hide_dev_mode_package, hide_dev_mode_required, lsposed_manager_package) and stealth_properties block (target property values).
 - [x] T-04 Document HideDevMode as the system_server-level spoof companion in device_cloaking/apply_stealth_props.sh; add device_cloaking/HIDEDEVMODE_INTEGRATION.md install/runbook.
 - [x] T-05 Fix orchestrator.py syntax error (nested quotes in f-string at line 344) breaking all orchestrator execution; add G1 HideDevMode requirement hint.
-- [~] T-06 Offline GitHub Actions CI (.github/workflows/ci.yml) prepared locally: py_compile all Python scripts, bash -n all shell scripts, run tests/test_framework_e2e.py dry-run suite - no device, no network, no secrets. Push to origin DEFERRED: the GitHub App token lacks `workflows` permission to create `.github/workflows/ci.yml` (remote rejected). A repository maintainer with `workflows` permission can add the prepared workflow file from branch cline/vw3w3wp1. Locally verified equivalent: py_compile OK, bash -n OK, 17/17 e2e tests OK.
+- [~] T-06 Offline GitHub Actions CI (.github/workflows/ci.yml) prepared locally: py_compile all Python scripts, bash -n all shell scripts, run tests/test_framework_e2e.py dry-run suite - no device, no network, no secrets. Push to origin DEFERRED: the GitHub App token lacks `workflows` permission to create `.github/workflows/ci.yml` (remote rejected). A repository maintainer with `workflows` permission can add the prepared workflow file from branch cline/vw3w3wp1. Locally verified equivalent: py_compile OK, bash -n OK, 20/20 e2e tests OK.
 - [x] T-07 Add test_17 HideDevMode pre-flight layer to tests/test_framework_e2e.py (dry-run).
 - [x] T-08 Chronological step log entry in docs/steps.md (Asia/Saigon); tooling log in LOG.md; fixes ledger rows in FIXES.md.
-- [x] T-09 Commit all changes to branch cline/vw3w3wp1 and push to origin (commit 9990a04).
-- [x] T-10 Post-push verification: pushed branch state verified - 17/17 e2e tests OK, py_compile OK, bash -n OK, working tree clean.
+- [x] T-09 Install Frida 17.24.0 host client and harden Gate G4 instrumentation (frida_loader retries, port validation, version reporting, daemon-name config).
+- [x] T-10 Add device_cloaking/frida_server_setup.sh device-side Frida server manager (install/start/stop/status, renamed hl_daemon, stealth port 38921).
+- [x] T-11 Add frida_server_binary config field + tests test_18-20 (suite now 20 tests); update docs/steps.md, LOG.md, FIXES.md (FIX-020, FIX-021).
+- [x] T-12 Commit all changes to branch cline/vw3w3wp1 and push to origin.
+- [x] T-13 Post-push verification: pushed branch state verified - 20/20 e2e tests OK, py_compile OK, bash -n OK, working tree clean.
 
 ---
 
@@ -70,7 +73,7 @@ HideDevMode / eCapture: integrated as on-device components, not forked into this
 
 ## 5. Acceptance Criteria (verified offline, dry-run)
 
-1. python3 -m unittest tests/test_framework_e2e.py -> 17 tests, 0 failures.
+1. python3 -m unittest tests/test_framework_e2e.py -> 20 tests, 0 failures.
 2. python3 -m py_compile passes for every modified/new .py file.
 3. bash -n passes for device_cloaking/apply_stealth_props.sh and network_capture/gateway_setup.sh.
 4. orchestrator.py --dry-run --profile all --duration 1 exits 0 and emits all G0-G5 stage summaries.

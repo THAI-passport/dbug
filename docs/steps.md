@@ -221,4 +221,11 @@ Format conforms to `dbug-step-rationale`. Timestamps are in Asia/Saigon (+07:00)
   **Evidence:** [C] `scripts/install_dependencies.sh`, `orchestrator.py`, `FIXES.md` (FIX-026), `LOG.md`; [D] `tests/test_framework_e2e.py` (24/24 tests passing).
   **Revisit if:** Target Android phone requires a newer Frida release or custom Frida Gadget builds.
 
+- **Step:** Merged `cline/vw3w3wp1` branch (commit 8e94b3e): device-side Frida server setup, stealth port enforcement, and retry logic.
+  **Decision:** Merged `origin/cline/vw3w3wp1` into `main`; integrated `device_cloaking/frida_server_setup.sh` (device-side lifecycle manager for push, rename to `hl_daemon`, start on stealth port `38921`, stop, status); added connection retry with exponential backoff (`MAX_CONNECT_RETRIES=5`) and stealth port validation (refuses default port 27042 to prevent `/proc/net/tcp` detection) to `instrumentation/frida_loader.py`; updated `config/lab_config.yaml` with `telemetry.frida.frida_server_binary` and `remote_daemon_name`; expanded test suite to 26 tests in `tests/test_framework_e2e.py` (all 26 passing).
+  **Rationale:** Enforces strict anti-detection hygiene for device-side Frida binaries (renamed daemon and non-default TCP port) to avoid triggering RASP or infostealer network/procfs detection vectors.
+  **Evidence:** [C] `device_cloaking/frida_server_setup.sh`, `instrumentation/frida_loader.py`, `config/lab_config.yaml`, `FIXES.md` (FIX-027, FIX-028), `LOG.md`; [D] `tests/test_framework_e2e.py` (26/26 tests passing).
+  **Revisit if:** Target Android OEM enforces SELinux policies blocking renamed `/data/local/tmp` executables.
+
+
 
