@@ -42,3 +42,10 @@ The sample statically references the following environment detection artifacts `
 | URL | `https://c2-api.malicious-gate.example/api/v1/gate` | `[C]` |
 | IPv4 | `198.51.100.24` | `[C]` |
 | Telegram Token | `6829104812:AAH9fCANARYTokenMockSecretKey` | `[C]` |
+
+---
+
+## 5. Emulated Native AArch64 Strings (Gate G0)
+| Offset | Type | Decrypted String | Evidence Tag |
+| :--- | :--- | :--- | :--- |
+| `0x00001040` | `XOR_STRING_DECRYPT` | `https://api.telegram.org/bot6829104812:AAH9fCANARYTokenMockSecretKey/sendMessage` | `[C]` |

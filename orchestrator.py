@@ -230,6 +230,7 @@ class MasterOrchestrator:
         # Stage 4: Dynamic Instrumented Malware Execution (Gate G4)
         # -------------------------------------------------------------
         events_log = os.path.join(self.output_dir, "instrumentation_events.jsonl")
+        profile_json = os.path.join(self.output_dir, "analysis_profile.json")
         frida_cmd = [
             py_bin, "instrumentation/frida_loader.py",
             "--package", self.package_name,
@@ -237,6 +238,8 @@ class MasterOrchestrator:
             "--duration", str(self.duration),
             "--output", events_log
         ]
+        if os.path.exists(profile_json):
+            frida_cmd.extend(["--profile-json", profile_json])
         if self.dry_run:
             frida_cmd.append("--dry-run")
 
@@ -540,7 +543,7 @@ class MasterOrchestrator:
         if os.path.exists(iocs_path):
             with open(iocs_path, "r", encoding="utf-8") as f:
                 iocs_content = f.read()
-            for t_dir in [targets_base, current_sample_dir]:
+            for t_dir in [self.output_dir, targets_base, current_sample_dir]:
                 with open(os.path.join(t_dir, "IOCS.json"), "w", encoding="utf-8") as f:
                     f.write(iocs_content)
 
@@ -555,7 +558,7 @@ class MasterOrchestrator:
 {exec_summary}
 
 {key_deliverables}"""
-        for t_dir in [targets_base, current_sample_dir]:
+        for t_dir in [self.output_dir, targets_base, current_sample_dir]:
             with open(os.path.join(t_dir, "REPORT.md"), "w", encoding="utf-8") as f:
                 f.write(report_content)
 

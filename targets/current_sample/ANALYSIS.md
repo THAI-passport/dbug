@@ -2,7 +2,7 @@
 
 - **Package Name:** `com.example.malware`
 - **SHA-256 Hash:** `simulated_0000000000000000000000000000000000000000000000000000000000`
-- **Analysis Timestamp:** 2026-10-16 16:42:50 UTC
+- **Analysis Timestamp:** 2026-10-16 17:17:43 UTC
 - **Environment:** Physical Android Hardware (Cloaked, eBPF Uprobes, Out-of-Band Gateway)
 
 ---

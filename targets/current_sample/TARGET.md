@@ -2,9 +2,9 @@
 
 - **Package Name:** `com.example.malware`
 - **SHA-256:** `simulated_0000000000000000000000000000000000000000000000000000000000`
-- **Classification:** Universal Dynamic Assessment (Malware Intel, Privacy & AppSec)
-- **Profile Mode:** `all`
-- **Intake Date:** 2026-10-16
+- **Classification:** Android Infostealer / Evasive Malware Sample
+- **Profile Mode:** `malware`
+- **Intake Date:** 2026-10-17
 
 ## Gate Status Ledger
 

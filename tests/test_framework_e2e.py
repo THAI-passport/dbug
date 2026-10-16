@@ -80,6 +80,21 @@ class TestDbugFramework(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "TARGET.md")))
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "SOURCES.md")))
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "FACTS.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "analysis_profile.json")))
+
+            with open(os.path.join(tmp_dir, "STATIC_AUDIT.md"), "r") as f:
+                audit_md = f.read()
+                self.assertIn("## 5. Emulated Native AArch64 Strings (Gate G0)", audit_md)
+
+            with open(os.path.join(tmp_dir, "analysis_profile.json"), "r") as f:
+                profile = json.load(f)
+                self.assertIn("target", profile)
+                self.assertIn("hook_recommendations", profile)
+                self.assertIn("detected_cues", profile)
+                self.assertIn("emulated_native_strings", profile)
+                self.assertIn("risk_score", profile)
+                self.assertTrue(profile["hook_recommendations"].get("settings_global_spoofing"))
+                self.assertTrue(profile["hook_recommendations"].get("procfs_spoofing"))
 
     def test_04_native_aarch64_emulator(self):
         """Gate G0: Test AArch64 native string decryptor emulation."""
@@ -334,7 +349,7 @@ class TestDbugFramework(unittest.TestCase):
         self.assertEqual(res.returncode, 0)
         self.assertIn("[DRY-RUN]", res.stdout)
 
-    def test_17_hide_devmode_preflight_layer(self):
+    def test_19_hide_devmode_preflight_layer(self):
         """Gate G1: Layer 6 LSPosed HideDevMode module audit is present and passes in dry-run."""
         res = self.run_cmd([
             PYTHON_BIN, "device_cloaking/verify_stealth_state.py", "--dry-run"
@@ -344,6 +359,63 @@ class TestDbugFramework(unittest.TestCase):
         self.assertIn("LSPosed module package", res.stdout)
         self.assertIn("simulated: INSTALLED, ENABLED", res.stdout)
         self.assertIn("ALL PRE-FLIGHT STEALTH CHECKS PASSED", res.stdout)
+
+    def test_20_analysis_profile_handoff(self):
+        """Gate G0 -> Gate G4: Test static profile consumption by FridaLoader."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            profile_path = os.path.join(tmp_dir, "analysis_profile.json")
+            events_path = os.path.join(tmp_dir, "events.jsonl")
+            mock_profile = {
+                "target": {"package_name": "com.example.malware"},
+                "detected_cues": ["adb_enabled", "TracerPid"],
+                "hook_recommendations": {
+                    "procfs_spoofing": True,
+                    "settings_global_spoofing": True
+                }
+            }
+            with open(profile_path, "w") as f:
+                json.dump(mock_profile, f)
+
+            res = self.run_cmd([
+                PYTHON_BIN, "instrumentation/frida_loader.py",
+                "--package", "com.example.malware",
+                "--profile-json", profile_path,
+                "--output", events_path,
+                "--dry-run"
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertIn("Loaded Static Analysis Profile", res.stdout)
+            self.assertIn("Hook Recommendation: Procfs status/maps cloaking ACTIVE", res.stdout)
+            self.assertTrue(os.path.exists(events_path))
+
+    def test_21_requirements_specification(self):
+        """Packaging: Test requirements.txt exists and specifies core and emulation dependencies."""
+        req_path = os.path.join(WORKSPACE_DIR, "requirements.txt")
+        self.assertTrue(os.path.exists(req_path))
+        with open(req_path, "r") as f:
+            content = f.read()
+            self.assertIn("pyyaml", content)
+            self.assertIn("frida", content)
+            self.assertIn("pyelftools", content)
+            self.assertIn("unicorn", content)
+            self.assertIn("capstone", content)
+
+    def test_22_orchestrator_e2e_handoff(self):
+        """Master: Test orchestrator pipeline end-to-end generates analysis_profile.json and passes all gates."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            res = self.run_cmd([
+                PYTHON_BIN, "orchestrator.py",
+                "--output-dir", tmp_dir,
+                "--profile", "malware",
+                "--duration", "1",
+                "--dry-run"
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "analysis_profile.json")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "STATIC_AUDIT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "instrumentation_events.jsonl")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "REPORT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "IOCS.json")))
 
 
 if __name__ == "__main__":

@@ -59,16 +59,34 @@ def parse_lab_config(config_path):
 
 class FridaLoader:
     def __init__(self, package_name, port=38921, host="127.0.0.1",
-                 log_path="instrumentation_events.jsonl", dry_run=False):
+                 log_path="instrumentation_events.jsonl", profile_json=None, dry_run=False):
         self.package_name = package_name
         self.port = port
         self.host = host
         self.log_path = log_path
+        self.profile_json = profile_json
+        self.profile_data = {}
         self.dry_run = dry_run
         self.session = None
         self.device = None
         self.pid = None
         self.log_file = None
+
+        if self.profile_json and os.path.exists(self.profile_json):
+            try:
+                with open(self.profile_json, "r", encoding="utf-8") as f:
+                    self.profile_data = json.load(f)
+                cues = self.profile_data.get("detected_cues", [])
+                recs = self.profile_data.get("hook_recommendations", {})
+                print(f"[*] Loaded Static Analysis Profile from {self.profile_json}")
+                if cues:
+                    print(f"    Detected Anti-Analysis Cues: {', '.join(cues[:5])}")
+                if recs.get("procfs_spoofing"):
+                    print("    [!] Hook Recommendation: Procfs status/maps cloaking ACTIVE")
+                if recs.get("settings_global_spoofing"):
+                    print("    [!] Hook Recommendation: Settings.Global ADB/DevMode spoofing ACTIVE")
+            except Exception as e:
+                print(f"[-] Warning: Failed to read analysis profile JSON: {e}", file=sys.stderr)
 
     def compile_agent_sources(self, script_paths):
         """Concatenates multiple agent JavaScript files into a single bundle."""
@@ -236,6 +254,7 @@ def main():
     parser.add_argument("--port", type=int, default=None, help="Frida remote TCP port (default: 38921)")
     parser.add_argument("--duration", type=int, default=120, help="Observation window in seconds")
     parser.add_argument("--output", default="./sessions/current_capture/instrumentation_events.jsonl", help="Telemetry output log")
+    parser.add_argument("--profile-json", default=None, help="Path to static analysis_profile.json (Gate G0)")
     parser.add_argument("--dry-run", action="store_true", help="Simulate execution without physical hardware")
     args = parser.parse_args()
 
@@ -257,6 +276,7 @@ def main():
         package_name=package_name,
         port=port,
         log_path=args.output,
+        profile_json=args.profile_json,
         dry_run=args.dry_run
     )
 
