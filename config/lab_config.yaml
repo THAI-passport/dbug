@@ -16,6 +16,16 @@ lab_environment:
     remote_tmp_dir: "/data/local/tmp"
     use_root: true                        # Use su -c for privileged provider operations
 
+  # Android Emulator / AVD support (emulator.md). When --emulator is passed to
+  # orchestrator.py, dbug launches this AVD headless, connects over adb-over-TCP,
+  # and applies an emulator-stealth cloak instead of targeting a USB device.
+  emulator:
+    enabled: false                        # Set true to target an AVD instead of USB
+    avd: "pixel7"                         # AVD name to launch
+    port: 5554                            # Emulator/adb port
+    tcp_port: 5555                        # adb-over-TCP port on the host
+    profile: "pixel7"                     # Stealth device profile: pixel7 | pixel8 | samsung_s23
+
   # Network topology and containment
   network:
     target_interface: "wlan0"             # Wi-Fi interface on physical Android test device

@@ -84,7 +84,9 @@ def parse_lab_config(config_path):
 
 class MasterOrchestrator:
     def __init__(self, apk_path, package_name, duration=120, config_path="config/lab_config.yaml",
-                 output_dir=None, dry_run=False, profile="malware", interactive=False, apply_dev_hide=True):
+                 output_dir=None, dry_run=False, profile="malware", interactive=False, apply_dev_hide=True,
+                 emulator=False, emulator_avd="pixel7", emulator_port=5554, emulator_profile="pixel7",
+                 emulator_tcp_port=5555):
         self.apk_path = apk_path
         self.package_name = package_name
         self.duration = duration
@@ -93,6 +95,14 @@ class MasterOrchestrator:
         self.profile = profile.lower()
         self.interactive = interactive
         self.apply_dev_hide = apply_dev_hide
+        # Emulator / adb-over-TCP support (emulator.md). When enabled, dbug
+        # launches an AVD headless, connects over adb-over-TCP, applies an
+        # emulator-stealth cloak, and targets the emulator instead of a USB device.
+        self.emulator = emulator
+        self.emulator_avd = emulator_avd
+        self.emulator_port = emulator_port
+        self.emulator_profile = emulator_profile
+        self.emulator_tcp_port = emulator_tcp_port
 
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_dir = output_dir or f"./sessions/session_{ts}_{self.package_name}"
@@ -177,6 +187,47 @@ class MasterOrchestrator:
             return False
         return True
 
+    def _setup_emulator(self) -> None:
+        """Launch an AVD headless, connect over adb-over-TCP, apply emulator-stealth
+        cloak, and set self.serial so all downstream stages target the emulator.
+
+        Honors self.dry_run (prints intent, sets a simulated serial, touches no
+        emulator/adb binary). Never factory-resets or wipes an existing AVD.
+        """
+        tcp_serial = f"127.0.0.1:{self.emulator_tcp_port}"
+        if self.dry_run:
+            print(
+                f"[DRY-RUN] emulator setup: start AVD '{self.emulator_avd}' port {self.emulator_port}, "
+                f"adb-over-TCP {tcp_serial}, cloak profile '{self.emulator_profile}'"
+            )
+            self.serial = tcp_serial
+            return
+        emulator_tool = [sys.executable, "tools/emulator.py"]
+        # 1. Start AVD headless and wait for boot.
+        if not self.run_stage(
+            "Emulator: Start AVD",
+            emulator_tool + ["start", self.emulator_avd, "--port", str(self.emulator_port)],
+            check=True,
+        ):
+            print("[!] HALT: AVD start failed; aborting emulator session.", file=sys.stderr)
+            sys.exit(1)
+        # 2. Enable adb-over-TCP on the emulator and connect from the host.
+        self.run_stage(
+            "Emulator: adb-over-TCP connect",
+            emulator_tool + ["connect", "--host", "127.0.0.1", "--port", str(self.emulator_tcp_port)],
+            check=False,
+        )
+        # 3. Apply emulator-stealth cloak (mask QEMU/goldfish indicators).
+        self.run_stage(
+            "Emulator: Apply stealth cloak",
+            emulator_tool + [
+                "cloak", "--serial", tcp_serial, "--profile", self.emulator_profile,
+            ],
+            check=False,
+        )
+        self.serial = tcp_serial
+        print(f"[+] Emulator session ready: serial={self.serial} (adb-over-TCP)")
+
     def execute_pipeline(self):
         """Executes the complete multi-profile automated analysis pipeline."""
         print("=" * 65)
@@ -190,6 +241,12 @@ class MasterOrchestrator:
         print(f"Output Session:  {self.output_dir}")
         print(f"Dry-Run Mode:    {self.dry_run}")
         print("=" * 65)
+
+        # Emulator / adb-over-TCP setup: launch AVD, connect over TCP, apply
+        # emulator-stealth cloak, and set self.serial so all downstream stages
+        # target the emulator instead of a USB device.
+        if self.emulator:
+            self._setup_emulator()
 
         os.makedirs(self.output_dir, exist_ok=True)
         py_bin = sys.executable
@@ -692,6 +749,15 @@ def main():
                         help="Disable developer option hiding (HideDevMode is ON by default)")
     parser.add_argument("--apply-dev-hide", dest="apply_dev_hide", action="store_true", default=True,
                         help="Apply developer option hiding before analysis (ON by default)")
+    parser.add_argument("--emulator", action="store_true",
+                        help="Use an Android Emulator / AVD over adb-over-TCP instead of a USB device")
+    parser.add_argument("--emulator-avd", default="pixel7", help="AVD name to launch (default: pixel7)")
+    parser.add_argument("--emulator-port", type=int, default=5554,
+                        help="Emulator/adb port (default: 5554)")
+    parser.add_argument("--emulator-profile", default="pixel7",
+                        help="Emulator stealth device profile (default: pixel7)")
+    parser.add_argument("--emulator-tcp-port", type=int, default=5555,
+                        help="adb-over-TCP port on host (default: 5555)")
     args = parser.parse_args()
 
     # --sanitize runs the six-tier device teardown and exits before any analysis.
@@ -742,7 +808,12 @@ def main():
         dry_run=args.dry_run,
         profile=profile,
         interactive=args.interactive,
-        apply_dev_hide=args.apply_dev_hide
+        apply_dev_hide=args.apply_dev_hide,
+        emulator=args.emulator,
+        emulator_avd=args.emulator_avd,
+        emulator_port=args.emulator_port,
+        emulator_profile=args.emulator_profile,
+        emulator_tcp_port=args.emulator_tcp_port,
     )
 
     orchestrator.execute_pipeline()
