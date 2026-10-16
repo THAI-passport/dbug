@@ -79,6 +79,10 @@ class StealthAuditor:
                 return "stopped"
             if "getprop http.proxyHost" in cmd_str:
                 return ""
+            if "settings get global http_proxy" in cmd_str:
+                return "null"
+            if "cacerts-added" in cmd_str:
+                return ""
             if "settings get global adb_enabled" in cmd_str:
                 return "0"
             if "settings get global development_settings_enabled" in cmd_str:
@@ -212,7 +216,23 @@ class StealthAuditor:
             failures.append(f"Android system proxy property detected: http.proxyHost='{proxy}'")
             print(f"  [-] http.proxyHost = '{proxy}' [FAIL]")
         else:
-            print("  [+] No system HTTP proxy configured (PASS)")
+            print("  [+] No system HTTP proxy property configured (PASS)")
+
+        global_proxy = self.run_adb(["shell", "settings", "get", "global", "http_proxy"])
+        if global_proxy and global_proxy not in ("null", ":0", ""):
+            failures.append(f"Settings.Global http_proxy is configured: '{global_proxy}'")
+            print(f"  [-] Settings.Global.http_proxy = '{global_proxy}' [FAIL]")
+        else:
+            print("  [+] Settings.Global http_proxy is clean (PASS)")
+
+        # Audit user-installed CA certificates
+        user_certs = self.run_adb(["shell", "su", "-c", "ls /data/misc/user/0/cacerts-added 2>/dev/null"])
+        if user_certs and "No such" not in user_certs and user_certs.strip():
+            cert_list = [c.strip() for c in user_certs.splitlines() if c.strip()]
+            failures.append(f"User-installed CA certificate(s) detected: {cert_list}. Run sanitize_device_state.py!")
+            print(f"  [-] User-installed CA certificates detected: {cert_list} [FAIL]")
+        else:
+            print("  [+] No user-installed CA certificates in user credential store (PASS)")
 
         # ---------------------------------------------------------
         # Layer 4: Port Hygiene (Frida & Remote ADB)

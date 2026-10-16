@@ -137,7 +137,7 @@ class FridaLoader:
                 "algorithm": "AES/CBC/PKCS5Padding",
                 "opmode": "ENCRYPT_MODE",
                 "key_algorithm": "AES",
-                "key_hex": "4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930",
+                "key_hex": "c8f1e2d3b4a5968778695a4b3c2d1e0fe1d2c3b4a5968778695a4b3c2d1e0f01",
                 "iv_hex": "00112233445566778899aabbccddeeff",
                 "timestamp_ms": now_ms + 500
             },
@@ -148,7 +148,7 @@ class FridaLoader:
                 "input_hex": "596f7572206f6e652d74696d6520617574686f72697a6174696f6e20636f64652069732039383432313720666f72207472616e73616374696f6e2054582d43414e4152592d3838333932312e",
                 "input_utf8": "Your one-time authorization code is 984217 for transaction TX-CANARY-883921.",
                 "output_length": 112,
-                "output_hex": "a1b2c3d4e5f6071829304a8f9c018239a1b2c3d4e5f6071829304a8f9c018239",
+                "output_hex": "9a7b5c3d1e2f40826451a3b2c1d0e9f87b6a5c4d3e2f1098a7b6c5d4e3f2019b",
                 "timestamp_ms": now_ms + 750
             }
         ]

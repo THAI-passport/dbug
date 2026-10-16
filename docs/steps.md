@@ -183,5 +183,8 @@ Format conforms to `dbug-step-rationale`. Timestamps are in Asia/Saigon (+07:00)
   **Evidence:** [C] `.claude/skills/dbug-privacy-audit/SKILL.md`, `.claude/skills/dbug-appsec-masvs/SKILL.md`.
   **Revisit if:** New mobile security standards (e.g. MASVS v2 updates) are published.
 
-
-
+- **Step:** Implemented device state sanitization module and eliminated synthetic target clutter.
+  **Decision:** Created `device_cloaking/sanitize_device_state.py` delivering a 6-tier post-session teardown and sanitization engine (auditing and purging user-installed CA certs in `/data/misc/user/*/cacerts-added/`, clearing global/system HTTP proxies, terminating lingering instrumentation daemons, uninstalling target packages, purging canaries, and verifying baseline cloaking properties); enhanced `device_cloaking/verify_stealth_state.py` Layer 3 pre-flight checks to audit user trust anchors; integrated teardown sanitization into `orchestrator.py` with standalone `--sanitize` CLI flag; eliminated hardcoded repeating dummy hash (`4a8f9c01...`) across all scripts in favor of deterministic SHA-256 derivation; deleted committed mock target directories; converted symlinks `REPO_ROADMAP.md` and `stealth_debug.md` into standard files to prevent ZIP extraction corruption; expanded test suite to 17 tests in `tests/test_framework_e2e.py` (all passing).
+  **Rationale:** Directly resolves Gemini Argon architectural and hygiene critique: guarantees zero residual developer artifacts or proxy/certificate leaks between analysis sessions, eliminates mock data clutter from git, and hardens repository portability.
+  **Evidence:** [C] `device_cloaking/sanitize_device_state.py`, `verify_stealth_state.py`, `orchestrator.py`; [D] `tests/test_framework_e2e.py` (17/17 tests passing).
+  **Revisit if:** Target Android OS introduces scoped user certificate keystore paths in Android 15+.

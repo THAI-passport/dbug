@@ -1,8 +1,8 @@
 # Dynamic Malware Analysis & Threat Intelligence Report
 
 - **Package Name:** `com.example.malware`
-- **SHA-256 Hash:** `4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930`
-- **Analysis Timestamp:** 2026-10-16 15:10:41 UTC
+- **SHA-256 Hash:** `81aba45333ed21a5856987fab8a0f0b4009058c52154a4bbabfa51c3d5a95e63`
+- **Analysis Timestamp:** 2026-10-16 15:40:58 UTC
 - **Environment:** Physical Android Hardware (Cloaked, eBPF Uprobes, Out-of-Band Gateway)
 
 ---
@@ -32,7 +32,7 @@ Dynamic behavioral analysis was conducted inside the isolated `dbug` sandbox. US
 
 | Algorithm | Key Hex | IV Hex | Evidence Tag |
 | :--- | :--- | :--- | :--- |
-| `AES/CBC/PKCS5Padding` | `4a8f9c01823901b2c3d4e5f607182930...` | `00112233445566778899aabbccddeeff` | `[M]` |
+| `AES/CBC/PKCS5Padding` | `c8f1e2d3b4a5968778695a4b3c2d1e0f...` | `00112233445566778899aabbccddeeff` | `[M]` |
 
 ---
 

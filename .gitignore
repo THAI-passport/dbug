@@ -16,9 +16,8 @@ Thumbs.db
 *.elf
 *.jar
 samples/
-targets/*/artifacts/
-targets/*/work/
-targets/*/decompiled/
+targets/*/
+!targets/current_sample/
 work/
 decompiled/
 
@@ -32,8 +31,10 @@ sslkey.log
 sessions/
 captures/
 
-# Logs and environment
+# Logs, archives and environment
 *.log
+*.zip
+dbug_audit_bundle.txt
 .env
 venv/
 .venv/

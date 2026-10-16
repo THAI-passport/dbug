@@ -29,14 +29,16 @@ except ImportError:
 
 
 def compute_sha256(file_path):
-    """Computes SHA-256 hash of a file if it exists."""
-    if not os.path.exists(file_path):
-        return "4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930"
-    h = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    """Computes SHA-256 hash of a file if it exists, or returns deterministic sha256."""
+    if not file_path:
+        return hashlib.sha256(b"unknown_sample").hexdigest()
+    if os.path.exists(file_path):
+        h = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    return hashlib.sha256(file_path.encode("utf-8")).hexdigest()
 
 
 def parse_lab_config(config_path):
@@ -231,13 +233,17 @@ class MasterOrchestrator:
             gw_stop.append("--dry-run")
         self.run_stage("Teardown: Stop Gateway tcpdump", gw_stop, check=False)
 
-        # Purge seeded canaries
-        clean_cmd = [py_bin, "config/seed_canaries.py", "--clean", "--config", self.config_path]
+        # Device state sanitization & baseline restoration (purges user CA certs, proxies, daemons, app, and canaries)
+        sanitize_cmd = [
+            py_bin, "device_cloaking/sanitize_device_state.py",
+            "--config", self.config_path,
+            "--package", self.package_name
+        ]
         if self.dry_run:
-            clean_cmd.append("--dry-run")
+            sanitize_cmd.append("--dry-run")
         if self.serial:
-            clean_cmd.extend(["--serial", self.serial])
-        self.run_stage("Teardown: Purge Mock Canaries", clean_cmd, check=False)
+            sanitize_cmd.extend(["--serial", self.serial])
+        self.run_stage("Teardown: Device State Sanitization & Baseline Restore", sanitize_cmd, check=False)
 
         # -------------------------------------------------------------
         # Stage 6: Decryption & Correlation Post-Processing (Gate G5)
@@ -577,17 +583,32 @@ def main():
     parser.add_argument("--interactive", action="store_true", help="Run interactive human-in-the-loop observation session")
     parser.add_argument("--config", default="config/lab_config.yaml", help="Path to lab_config.yaml")
     parser.add_argument("--output-dir", default=None, help="Custom output directory")
+    parser.add_argument("--sanitize", action="store_true", help="Run device state sanitization and teardown immediately without analysis")
+    parser.add_argument("--restore-props", action="store_true", help="When sanitizing, revert properties to standard dev mode defaults")
     parser.add_argument("--dry-run", action="store_true", help="Run end-to-end simulation across all gates")
     args = parser.parse_args()
 
     cfg = parse_lab_config(args.config)
     sample_cfg = cfg.get("lab_environment", {}).get("target_sample", {})
     def_cfg = cfg.get("lab_environment", {}).get("analysis_defaults", {})
+    dev_cfg = cfg.get("lab_environment", {}).get("device", {})
 
     apk = args.apk or sample_cfg.get("apk_path", "samples/sample.apk")
     package = args.package or sample_cfg.get("package_name", "com.example.malware")
     duration = args.duration or def_cfg.get("duration_seconds", 120)
     profile = args.profile or def_cfg.get("profile", "malware")
+    serial = dev_cfg.get("serial") or None
+
+    if args.sanitize:
+        cmd = [sys.executable, "device_cloaking/sanitize_device_state.py", "--config", args.config, "--package", package]
+        if args.dry_run:
+            cmd.append("--dry-run")
+        if serial:
+            cmd.extend(["--serial", serial])
+        if args.restore_props:
+            cmd.append("--restore-props")
+        res = subprocess.run(cmd)
+        sys.exit(res.returncode)
 
     orchestrator = MasterOrchestrator(
         apk_path=apk,

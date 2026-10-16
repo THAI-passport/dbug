@@ -35,10 +35,11 @@ class StaticTriager:
         """Computes SHA-256, SHA-1, and MD5 hashes of the target binary."""
         if not os.path.exists(self.apk_path):
             print(f"[!] Target APK not found at '{self.apk_path}'. Using simulated triage hashes.", file=sys.stderr)
+            sim_data = self.apk_path.encode("utf-8")
             self.hashes = {
-                "sha256": "4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930",
-                "sha1": "89b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9",
-                "md5": "d41d8cd98f00b204e9800998ecf8427e",
+                "sha256": hashlib.sha256(sim_data).hexdigest(),
+                "sha1": hashlib.sha1(sim_data).hexdigest(),
+                "md5": hashlib.md5(sim_data).hexdigest(),
                 "size_bytes": 4582910
             }
             return

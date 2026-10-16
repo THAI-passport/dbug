@@ -21,4 +21,7 @@ Tracks "Open" and "Fixed" issues in the dbug analysis toolkit.
 | FIX-015 | `parser_correlator/appsec_auditor.py` | Need OWASP MASVS crypto auditing and automated API schema export | FIXED | Implemented appsec auditor analyzing ECB modes/static IVs and exporting OpenAPI 3.0 spec |
 | FIX-016 | `orchestrator.py` | Framework limited to fixed-duration automated malware runs | FIXED | Added `--profile {malware,privacy,appsec,all}` and `--interactive` mode for human testing |
 | FIX-017 | `orchestrator.py` & `targets/` | Executive reports and target ledgers hardcoded for malware only | FIXED | Tailored `TARGET.md` and `REPORT.md` dynamically per active profile (privacy, appsec, all, malware) and authored `docs/SOP.md` and `README.md` |
+| FIX-018 | `device_cloaking/sanitize_device_state.py` | Need dedicated post-session state sanitization & teardown script | FIXED | Implemented 6-tier device sanitizer auditing/purging user CA certs, clearing global proxy, terminating daemons, and uninstalling target app |
+| FIX-019 | Repo Hygiene & `targets/` | Committed mock session clutter, repeating dummy hashes (`4a8f9c01...`), and zip-corrupting symlinks | FIXED | Purged committed mock target directories, replaced repeating dummy hashes with deterministic SHA-256, converted symlinks to files, and ignored session runs |
+
 

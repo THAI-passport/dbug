@@ -6,6 +6,7 @@ parsers, and threat intelligence exporters across Gates G0 through G5.
 Designed to run in offline/CI environments with 100% test reproducibility.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -239,7 +240,7 @@ class TestDbugFramework(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "analysis_report.md")))
 
             # Verify target directory sync per AGENTS.md contract
-            sample_hash = "4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930"
+            sample_hash = hashlib.sha256(b"samples/sample.apk").hexdigest()
             target_dir = os.path.join(WORKSPACE_DIR, "targets", sample_hash)
             self.assertTrue(os.path.exists(os.path.join(target_dir, "TARGET.md")))
             self.assertTrue(os.path.exists(os.path.join(target_dir, "SOURCES.md")))
@@ -248,6 +249,8 @@ class TestDbugFramework(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(target_dir, "REPORT.md")))
             self.assertTrue(os.path.exists(os.path.join(target_dir, "LOG.md")))
             self.assertTrue(os.path.exists(os.path.join(target_dir, "IOCS.json")))
+            # Clean up target test artifacts to maintain zero repo clutter
+            shutil.rmtree(target_dir, ignore_errors=True)
 
     def test_13_privacy_auditor(self):
         """Profile Privacy: Test mobile app tracker audit and PII leakage detection."""
@@ -309,6 +312,18 @@ class TestDbugFramework(unittest.TestCase):
             ])
             self.assertEqual(res.returncode, 0)
             self.assertIn("Interactive capture session simulated", res.stdout)
+
+    def test_17_device_state_sanitizer(self):
+        """Teardown: Test 6-tier device state sanitization and baseline restore in dry-run mode."""
+        res = self.run_cmd([PYTHON_BIN, "device_cloaking/sanitize_device_state.py", "--dry-run"])
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("dbug DEVICE STATE SANITIZATION & TEARDOWN", res.stdout)
+        self.assertIn("Auditing & purging user-installed CA certificates", res.stdout)
+        self.assertIn("Sanitizing system and global HTTP proxy configurations", res.stdout)
+        self.assertIn("Terminating lingering background instrumentation daemons", res.stdout)
+        self.assertIn("Purging target package", res.stdout)
+        self.assertIn("Purging synthetic mock canaries", res.stdout)
+        self.assertIn("DEVICE STATE SANITIZATION COMPLETE", res.stdout)
 
 
 if __name__ == "__main__":

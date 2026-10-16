@@ -14,7 +14,7 @@ import sys
 
 
 class YaraGenerator:
-    def __init__(self, session_dir, package_name="com.example.malware", sha256="4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930"):
+    def __init__(self, session_dir, package_name="com.example.malware", sha256="2636716e970a50e45f957a71d05f9e8f413367305528c5965a8a4c1f293a13b0"):
         self.session_dir = session_dir
         self.package_name = package_name
         self.sha256 = sha256
