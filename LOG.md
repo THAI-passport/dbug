@@ -57,9 +57,9 @@ Chronological log of bugs, regressions, performance quirks, and operational obse
   - **Change:** Added telemetry.lsposed block (hide_dev_mode_package, hide_dev_mode_required, lsposed_manager_package) and stealth_properties block (target property values asserted by Layer 1).
 - **Script:** tests/test_framework_e2e.py
   - **Change:** Added test_17_hide_devmode_preflight_layer covering Layer 6 dry-run behavior.
-- **New:** .github/workflows/ci.yml — offline CI: py_compile all Python scripts, bash -n all shell scripts, dry-run e2e suite; no device, no network, no secrets.
-- **New:** fork-v1.md — fork decision record (dbug itself as base), gate-by-gate integration plan, task checklist, acceptance criteria.
-- **New:** device_cloaking/HIDEDEVMODE_INTEGRATION.md — HideDevMode install/enable/verify/remediation runbook for Gate G1 Layer B.
+- **New:** .github/workflows/ci.yml - offline CI: py_compile all Python scripts, bash -n all shell scripts, dry-run e2e suite; no device, no network, no secrets.
+- **New:** fork-v1.md - fork decision record (dbug itself as base), gate-by-gate integration plan, task checklist, acceptance criteria.
+- **New:** device_cloaking/HIDEDEVMODE_INTEGRATION.md - HideDevMode install/enable/verify/remediation runbook for Gate G1 Layer B.
 
 ## [2026-10-16] Push constraint (environmental)
 
