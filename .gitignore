@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Malware samples & untrusted binaries (AGENTS.md non-negotiable ground rule)
+*.apk
+*.xapk
+*.apks
+*.dex
+*.so
+*.elf
+*.jar
+samples/
+targets/*/artifacts/
+targets/*/work/
+targets/*/decompiled/
+work/
+decompiled/
+
+# Network captures & raw dumps
+*.pcap
+*.pcapng
+*.cap
+*.btsnoop
+*.keylog
+sslkey.log
+sessions/
+captures/
+
+# Logs and environment
+*.log
+.env
+venv/
+.venv/
