@@ -232,3 +232,9 @@ Format conforms to `dbug-step-rationale`. Timestamps are in Asia/Saigon (+07:00)
   **Rationale:** Allows immediate out-of-the-box operation on any forked clone or cloud CI/CD worker without requiring tethered physical Android hardware or nested virtualization setups.
   **Evidence:** [C] `orchestrator.py`, `sample_triage/executable_debugger.py`, `samples/build_samples.py`, `Dockerfile`, `docker-compose.yml`, `scripts/setup_cloud_instance.sh`, `docs/CLOUD_GUIDE.md`; [D] `tests/test_framework_e2e.py` (31/31 passed).
   **Revisit if:** Cloud vendors restrict nested KVM if containerized Android (redroid) is introduced for UI-level automation.
+
+- **Step:** Rewrote and synchronized `AGENTS.md` operational contract with all cloud, native executable, and virtual sandbox capabilities.
+  **Decision:** Comprehensively updated `AGENTS.md` to reflect the multi-target architecture (Android APKs and native standalone ELF binaries / `.so` libraries), dual execution modes (physical hardware vs. zero-phone cloud virtual sandbox), updated minimal prompt schemas for native executable debugging, expanded G0-G5 gates ledger with target-specific and cloud-mode paths, and updated workspace layout; rejected: leaving operational mandate out of sync with current framework code.
+  **Rationale:** Ensures any future AI agent or human security researcher working in this repository operates under clear, verified, and strictly updated system instructions.
+  **Evidence:** [C] `AGENTS.md`.
+  **Revisit if:** Additional target formats (e.g. Windows PE or iOS IPA) are introduced into the platform.
