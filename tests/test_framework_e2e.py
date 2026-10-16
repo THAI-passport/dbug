@@ -239,8 +239,9 @@ class TestDbugFramework(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(tmp_dir, "analysis_report.md")))
 
             # Verify target directory sync per AGENTS.md contract
-            sample_hash = "4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930"
-            target_dir = os.path.join(WORKSPACE_DIR, "targets", sample_hash)
+            # Verify target directory sync per AGENTS.md contract
+            # Check canonical template target (always synced regardless of hash)
+            target_dir = os.path.join(WORKSPACE_DIR, "targets", "current_sample")
             self.assertTrue(os.path.exists(os.path.join(target_dir, "TARGET.md")))
             self.assertTrue(os.path.exists(os.path.join(target_dir, "SOURCES.md")))
             self.assertTrue(os.path.exists(os.path.join(target_dir, "FACTS.md")))
@@ -309,6 +310,21 @@ class TestDbugFramework(unittest.TestCase):
             ])
             self.assertEqual(res.returncode, 0)
             self.assertIn("Interactive capture session simulated", res.stdout)
+
+    def test_17_device_state_sanitizer(self):
+        """Sanitizer: Test six-tier device state teardown in dry-run mode."""
+        res = self.run_cmd([
+            PYTHON_BIN, "sanitize_device_state.py",
+            "--dry-run"
+        ])
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("Tier 1", res.stdout)
+        self.assertIn("Tier 2", res.stdout)
+        self.assertIn("Tier 3", res.stdout)
+        self.assertIn("Tier 4", res.stdout)
+        self.assertIn("Tier 5", res.stdout)
+        self.assertIn("Tier 6", res.stdout)
+        self.assertIn("pristine baseline", res.stdout)
 
 
 if __name__ == "__main__":

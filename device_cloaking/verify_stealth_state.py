@@ -50,16 +50,23 @@ def parse_lab_config(config_path):
 
 
 class StealthAuditor:
-    def __init__(self, serial=None, dry_run=False):
+    def __init__(self, serial=None, dry_run=False, use_root=True):
         self.serial = serial
         self.dry_run = dry_run
+        self.use_root = use_root
 
-    def run_adb(self, cmd_args, check=False):
-        """Executes an ADB command with optional serial routing."""
+    def run_adb(self, cmd_args, check=False, as_root=False):
+        """Executes an ADB command with optional serial routing and root elevation."""
         base = ["adb"]
         if self.serial:
             base.extend(["-s", self.serial])
-        full_cmd = base + cmd_args
+
+        if as_root and self.use_root:
+            effective_args = cmd_args[1:] if cmd_args and cmd_args[0] == "shell" else cmd_args
+            inner_cmd = " ".join(shlex.quote(arg) for arg in effective_args)
+            full_cmd = base + ["shell", "su", "-c", inner_cmd]
+        else:
+            full_cmd = base + cmd_args
 
         if self.dry_run:
             cmd_str = " ".join(cmd_args)
@@ -83,6 +90,14 @@ class StealthAuditor:
                 return "0"
             if "settings get global development_settings_enabled" in cmd_str:
                 return "0"
+            if "settings get global http_proxy" in cmd_str:
+                return ""
+            if "settings get global global_http_proxy_host" in cmd_str:
+                return ""
+            if "ls -1 /data/misc/user/0/cacerts-added/" in cmd_str:
+                return ""
+            if "ls -1 /data/misc/keychain/cacerts-added/" in cmd_str:
+                return ""
             if "ip -o link show" in cmd_str:
                 return "1: lo: <LOOPBACK> \n2: wlan0: <BROADCAST,MULTICAST,UP> "
             if "/proc/net/tcp" in cmd_str:
@@ -214,6 +229,33 @@ class StealthAuditor:
         else:
             print("  [+] No system HTTP proxy configured (PASS)")
 
+        # --- Settings.Global http_proxy / global_http_proxy_host ---
+        for setting in ["http_proxy", "global_http_proxy_host"]:
+            proxy_setting = self.run_adb(["shell", "settings", "get", "global", setting])
+            if proxy_setting and proxy_setting.strip():
+                failures.append(f"Settings.Global.{setting} is set to '{proxy_setting.strip()}'")
+                print(f"  [-] Settings.Global.{setting} = '{proxy_setting.strip()}' [FAIL]")
+            else:
+                print(f"  [+] Settings.Global.{setting} is unset (PASS)")
+
+        # --- Rogue user-installed CA certificates ---
+        ca_dirs = ["/data/misc/user/0/cacerts-added/", "/data/misc/keychain/cacerts-added/"]
+        rogue_cas = []
+        for ca_dir in ca_dirs:
+            listing = self.run_adb(["shell", "ls", "-1", ca_dir], as_root=True)
+            if listing and "No such file" not in listing and "No such file or directory" not in listing:
+                certs = [c for c in listing.split() if c.strip()]
+                if certs:
+                    rogue_cas.extend(certs)
+                    failures.append(f"Rogue user-installed CA certificates found in {ca_dir}: {', '.join(certs)}")
+                    print(f"  [-] Rogue user CA certs in {ca_dir}: {len(certs)} certificate(s) [FAIL]")
+                else:
+                    print(f"  [+] No user CA certificates in {ca_dir} (PASS)")
+            else:
+                print(f"  [+] No user CA certificate directory at {ca_dir} (PASS)")
+        if rogue_cas:
+            print("    [!] Rogue user CA certificates will cause TLS pinning failure and RASP/malware detection.")
+
         # ---------------------------------------------------------
         # Layer 4: Port Hygiene (Frida & Remote ADB)
         # ---------------------------------------------------------
@@ -284,8 +326,9 @@ def main():
     cfg = parse_lab_config(args.config)
     dev_cfg = cfg.get("lab_environment", {}).get("device", {})
     serial = args.serial or dev_cfg.get("serial") or None
+    use_root = dev_cfg.get("use_root", True)
 
-    auditor = StealthAuditor(serial=serial, dry_run=args.dry_run)
+    auditor = StealthAuditor(serial=serial, dry_run=args.dry_run, use_root=use_root)
 
     if args.restore:
         ok = auditor.restore_props()

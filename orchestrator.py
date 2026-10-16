@@ -29,9 +29,13 @@ except ImportError:
 
 
 def compute_sha256(file_path):
-    """Computes SHA-256 hash of a file if it exists."""
+    """Computes SHA-256 hash of a file if it exists.
+
+    Returns None when the file is missing (callers must handle this;
+    never fabricate a hash).
+    """
     if not os.path.exists(file_path):
-        return "4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930"
+        return None
     h = hashlib.sha256()
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
@@ -95,7 +99,20 @@ class MasterOrchestrator:
 
         dev_cfg = self.cfg.get("lab_environment", {}).get("device", {})
         self.serial = dev_cfg.get("serial") or None
-        self.sha256 = compute_sha256(self.apk_path) if self.apk_path else "0000000000000000000000000000000000000000000000000000000000000000"
+        # Derive real SHA-256 from the sample; never fabricate a hash.
+        if self.apk_path:
+            computed = compute_sha256(self.apk_path)
+            if computed is None:
+                if self.dry_run:
+                    self.sha256 = "simulated_" + "0" * 58
+                    print(f"[!] Warning: APK not found at '{self.apk_path}'; using simulated SHA-256 for dry-run.")
+                else:
+                    print(f"[!] Error: Target APK not found at '{self.apk_path}'. Cannot proceed without a real sample.", file=sys.stderr)
+                    sys.exit(1)
+            else:
+                self.sha256 = computed
+        else:
+            self.sha256 = "simulated_" + "0" * 58
 
     def run_stage(self, stage_name, cmd_list, check=True):
         """Executes a framework command stage with status reporting."""
@@ -136,6 +153,8 @@ class MasterOrchestrator:
             "--package", self.package_name,
             "--output-dir", self.output_dir
         ]
+        if self.dry_run:
+            g0_cmd.append("--dry-run")
         self.run_stage("Gate G0: Sample Intake & Static Triage", g0_cmd, check=False)
 
         # -------------------------------------------------------------
@@ -579,7 +598,28 @@ def main():
     parser.add_argument("--config", default="config/lab_config.yaml", help="Path to lab_config.yaml")
     parser.add_argument("--output-dir", default=None, help="Custom output directory")
     parser.add_argument("--dry-run", action="store_true", help="Run end-to-end simulation across all gates")
+    parser.add_argument("--sanitize", action="store_true",
+                        help="Run device state sanitization (six-tier teardown) and exit")
+    parser.add_argument("--restore-props", action="store_true",
+                        help="Restore developer-default properties instead of verifying stealth state")
     args = parser.parse_args()
+
+    # --sanitize runs the six-tier device teardown and exits before any analysis.
+    if args.sanitize:
+        from sanitize_device_state import DeviceSanitizer, parse_lab_config as _parse_cfg
+        cfg = _parse_cfg(args.config)
+        dev_cfg = cfg.get("lab_environment", {}).get("device", {})
+        serial = dev_cfg.get("serial") or None
+        use_root = dev_cfg.get("use_root", True)
+        sanitizer = DeviceSanitizer(
+            serial=serial,
+            use_root=use_root,
+            dry_run=args.dry_run,
+            package_name=args.package,
+            restore_props=args.restore_props,
+        )
+        ok = sanitizer.run_all(args.config)
+        sys.exit(0 if ok else 1)
 
     cfg = parse_lab_config(args.config)
     sample_cfg = cfg.get("lab_environment", {}).get("target_sample", {})

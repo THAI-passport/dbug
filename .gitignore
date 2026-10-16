@@ -16,6 +16,8 @@ Thumbs.db
 *.elf
 *.jar
 samples/
+targets/*/
+!targets/current_sample/
 targets/*/artifacts/
 targets/*/work/
 targets/*/decompiled/
