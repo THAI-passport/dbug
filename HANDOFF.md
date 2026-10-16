@@ -186,3 +186,50 @@ Pushed: yes, to https://github.com/THAI-passport/dbug.git
 - adb must be in PATH for non-dry-run operations.
 - targets/current_sample/ is the canonical template target; targets/<sha256>/ directories are generated at runtime and gitignored.
 - No emoji anywhere in this document or any code change (verified: plain ASCII punctuation only).
+
+---
+
+## 11. New: Developer Option Hiding (hide_dev.md & hide_dev_options.sh)
+
+### Problem
+`apply_stealth_props.sh` masks system properties (`ro.debuggable`, `sys.usb.state`,
+etc.) but does **not** touch `Settings.Global.adb_enabled` or
+`development_settings_enabled`. Malware and RASP engines read these settings
+directly and will detect the analysis environment.
+
+### Solution
+- **`hide_dev.md`** (NEW) — Documentation for hiding developer options
+- **`device_cloaking/hide_dev_options.sh`** (NEW) — Shell script that writes
+  `adb_enabled=0` and `development_settings_enabled=0` to `Settings.Global`
+  via `su -c`. Supports `apply`, `restore`, `status`, `verify`, and `--dry-run`.
+- **`sanitize_device_state.py`** — Tier 2 now also sets
+  `Settings.Global.adb_enabled=0` and `development_settings_enabled=0`
+- **`verify_stealth_state.py`** — New `--apply-dev-hide` flag applies hiding
+  before auditing; dry-run safe
+- **`orchestrator.py`** — New `--apply-dev-hide` flag; pushes
+  `hide_dev_options.sh` to device and applies during G1 pre-flight
+- **`tests/test_framework_e2e.py`** — `test_18_hide_dev_options_dry_run` added
+  (18 tests total, all pass)
+
+### Usage
+```bash
+# Apply developer-option hiding before analysis
+python3 orchestrator.py --apply-dev-hide --dry-run --profile all --duration 1
+
+# Or standalone
+bash device_cloaking/hide_dev_options.sh --dry-run apply
+```
+
+### Evidence Tags
+- `[C]` Code / Static — `Settings.Global` bytecode references in `bypass_antidebug.js`
+- `[D]` Dynamic Action — `settings put global` taking effect on device
+- `[M]` Memory / Hook — Frida `getInt` hooks in `bypass_antidebug.js`
+
+---
+
+## 12. Updated Git State
+
+Branch: cline/36qravd3
+Last commit: 9e88179 — HANDOFF.md
+Working tree: will be clean after next commit
+Pushed: yes, to https://github.com/THAI-passport/dbug.git

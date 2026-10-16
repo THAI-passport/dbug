@@ -84,7 +84,7 @@ def parse_lab_config(config_path):
 
 class MasterOrchestrator:
     def __init__(self, apk_path, package_name, duration=120, config_path="config/lab_config.yaml",
-                 output_dir=None, dry_run=False, profile="malware", interactive=False):
+                 output_dir=None, dry_run=False, profile="malware", interactive=False, apply_dev_hide=False):
         self.apk_path = apk_path
         self.package_name = package_name
         self.duration = duration
@@ -92,6 +92,7 @@ class MasterOrchestrator:
         self.dry_run = dry_run
         self.profile = profile.lower()
         self.interactive = interactive
+        self.apply_dev_hide = apply_dev_hide
 
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_dir = output_dir or f"./sessions/session_{ts}_{self.package_name}"
@@ -165,6 +166,23 @@ class MasterOrchestrator:
             g1_cmd.append("--dry-run")
         if self.serial:
             g1_cmd.extend(["--serial", self.serial])
+        # Push hide_dev_options.sh to device for Settings.Global spoofing
+        push_hide_dev = [
+            "adb", "push", "device_cloaking/hide_dev_options.sh",
+            "/data/local/tmp/hide_dev_options.sh"
+        ]
+        if self.serial:
+            push_hide_dev.insert(2, "-s")
+            push_hide_dev.insert(3, self.serial)
+        if self.dry_run:
+            print(f"[DRY-RUN] {' '.join(push_hide_dev)}")
+        else:
+            subprocess.run(push_hide_dev, capture_output=True, text=True, check=False)
+        os.chmod("device_cloaking/hide_dev_options.sh", 0o755)
+
+        g1_cmd.append("--apply-dev-hide")
+
+
 
         if not self.run_stage("Gate G1: Pre-Flight Stealth Audit", g1_cmd, check=True):
             print("\n[!] HALT: Pre-flight stealth cloaking audit failed! Malware detonation aborted.", file=sys.stderr)
@@ -602,6 +620,8 @@ def main():
                         help="Run device state sanitization (six-tier teardown) and exit")
     parser.add_argument("--restore-props", action="store_true",
                         help="Restore developer-default properties instead of verifying stealth state")
+    parser.add_argument("--apply-dev-hide", action="store_true",
+                        help="Apply developer option hiding (adb_enabled=0, development_settings_enabled=0) before analysis")
     args = parser.parse_args()
 
     # --sanitize runs the six-tier device teardown and exits before any analysis.
@@ -638,7 +658,8 @@ def main():
         output_dir=args.output_dir,
         dry_run=args.dry_run,
         profile=profile,
-        interactive=args.interactive
+        interactive=args.interactive,
+        apply_dev_hide=args.apply_dev_hide
     )
 
     orchestrator.execute_pipeline()

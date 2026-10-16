@@ -165,6 +165,18 @@ class DeviceSanitizer:
     # ------------------------------------------------------------------
     # Tier 3 - Lingering Daemons
     # ------------------------------------------------------------------
+
+        # --- Settings.Global adb_enabled / development_settings_enabled ---
+        for setting, val in [("adb_enabled", "0"), ("development_settings_enabled", "0")]:
+            if self.dry_run:
+                print(f"    [DRY-RUN] Would settings put global {setting} {val}")
+                continue
+            self.run_adb(
+                ["shell", "settings", "put", "global", setting, val],
+                as_root=True, check=True
+            )
+            cleared.append(f"Settings.Global.{setting}={val}")
+            print(f"    [+] settings put global {setting} {val}")
     def tier3_daemons(self):
         print("\n[*] Tier 3: Terminating lingering background daemons...")
         daemons = ["frida-server", "ecapture", "tcpdump"]

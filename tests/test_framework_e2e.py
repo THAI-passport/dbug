@@ -327,5 +327,14 @@ class TestDbugFramework(unittest.TestCase):
         self.assertIn("pristine baseline", res.stdout)
 
 
+
+    def test_18_hide_dev_options_dry_run(self):
+        """Sanitizer: Test hide_dev_options.sh dry-run mode."""
+        res = self.run_cmd([
+            "bash", "device_cloaking/hide_dev_options.sh", "--dry-run", "apply"
+        ])
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("[DRY-RUN]", res.stdout)
+
 if __name__ == "__main__":
     unittest.main()

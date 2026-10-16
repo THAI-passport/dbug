@@ -320,6 +320,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Simulate audit checks without physical hardware")
     parser.add_argument("--push-and-apply", action="store_true", help="Push and apply stealth properties via root before auditing")
     parser.add_argument("--restore", action="store_true", help="Revert device properties to developer defaults")
+    parser.add_argument("--apply-dev-hide", action="store_true", help="Apply developer option hiding (adb_enabled=0, development_settings_enabled=0) before auditing")
     args = parser.parse_args()
 
     # Load configuration
@@ -333,6 +334,21 @@ def main():
     if args.restore:
         ok = auditor.restore_props()
         sys.exit(0 if ok else 1)
+
+
+    if args.apply_dev_hide:
+        if args.dry_run:
+            print("[DRY-RUN] Would apply developer option hiding via hide_dev_options.sh")
+        else:
+            import subprocess
+            res = subprocess.run(
+                ["adb", "shell", "su", "-c", "sh /data/local/tmp/hide_dev_options.sh apply"],
+                capture_output=True, text=True, check=False
+            )
+            print(res.stdout, end="")
+            if res.returncode != 0:
+                print(res.stderr, file=sys.stderr)
+                sys.exit(1)
 
     if args.push_and_apply:
         auditor.push_and_apply_props()
