@@ -2,7 +2,8 @@
 
 - **Package Name:** `com.example.malware`
 - **SHA-256:** `4a8f9c01823901b2c3d4e5f6071829304a8f9c01823901b2c3d4e5f607182930`
-- **Classification:** Android Infostealer / Banking Trojan
+- **Classification:** Universal Dynamic Assessment (Malware Intel, Privacy & AppSec)
+- **Profile Mode:** `all`
 - **Intake Date:** 2026-10-16
 
 ## Gate Status Ledger

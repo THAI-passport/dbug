@@ -14,7 +14,8 @@ This document provides a comprehensive ledger of all completed implementation ph
 | **Phase 3 (G3)** | **Zero-Footprint Network & TLS Capture** | `network_capture/gateway_setup.sh`<br>`network_capture/ecapture_runner.py`<br>`network_capture/sinkhole_inetsim.conf` | COMPLETE | External Linux AP routing, iptables NAT, full tcpdump capture, and eBPF Conscrypt uprobe management verified. |
 | **Phase 4 (G4)** | **Dynamic Runtime & Pre-Network Crypto** | `instrumentation/agent/bypass_antidebug.js`<br>`instrumentation/agent/crypto_dumper.js`<br>`instrumentation/agent/socket_tracer.js`<br>`instrumentation/frida_loader.py` | COMPLETE | Surgical hooks on `Cipher.init/doFinal`, native `connect/send`, `ptrace(PTRACE_TRACEME)`, and port 38921 loader verified. |
 | **Phase 5 (G5)** | **Correlation, Decryption & Reporting** | `parser_correlator/pcap_decryptor.py`<br>`parser_correlator/canary_hunter.py`<br>`parser_correlator/c2_protocol_decoder.py`<br>`parser_correlator/family_classifier.py`<br>`parser_correlator/ioc_extractor.py`<br>`parser_correlator/yara_generator.py`<br>`orchestrator.py` | COMPLETE | End-to-end master pipeline executed across all 8 stages (`--dry-run`), outputting YARA rule, STIX 2.1 JSON, MD report, C2 spec, and target directory sync. |
-| **Validation** | **Automated End-to-End Test Suite** | `tests/test_framework_e2e.py` | COMPLETE | 12 automated test suites covering G0-G5 pass with 100% test success rate. |
+| **Phase 6** | **Commercial AppSec & Privacy Extension** | `config/tracker_catalog.json`<br>`parser_correlator/privacy_auditor.py`<br>`parser_correlator/appsec_auditor.py`<br>`orchestrator.py` (`--profile`, `--interactive`) | COMPLETE | First-class non-malware support: mobile tracker taxonomy, GDPR/CCPA PII leak auditor, OWASP MASVS crypto auditor, OpenAPI 3.0 export, and interactive human-in-the-loop testing. |
+| **Validation** | **Automated End-to-End Test Suite** | `tests/test_framework_e2e.py` | COMPLETE | 16 automated test suites covering G0-G5, multi-profile dispatch, privacy audits, and OpenAPI synthesis pass with 100% success rate. |
 
 ---
 
@@ -56,7 +57,7 @@ This document provides a comprehensive ledger of all completed implementation ph
 - **Step 4.4: [instrumentation/frida_loader.py](file:///Users/puredent/Desktop/dbug/instrumentation/frida_loader.py)**
   - Host Python runner connecting to Frida on non-standard port `38921` (renamed daemon `hl_daemon`), spawning target package, injecting agents, and streaming structured JSON telemetry to `instrumentation_events.jsonl`.
 
-### Phase 5: Traffic Decryption, Canary Correlation & IOC Reporting (`parser_correlator/` & `orchestrator.py`)
+### Phase 5: Traffic Decryption, Canary Correlation & Threat Intelligence (`parser_correlator/` & `orchestrator.py`)
 - **Step 5.1: [parser_correlator/pcap_decryptor.py](file:///Users/puredent/Desktop/dbug/parser_correlator/pcap_decryptor.py)**
   - Combines raw gateway PCAP with eCapture `sslkey.log` using `tshark` to decrypt TLS sessions into plaintext HTTP/1.1 and HTTP/2 flows.
 - **Step 5.2: [parser_correlator/canary_hunter.py](file:///Users/puredent/Desktop/dbug/parser_correlator/canary_hunter.py)**
@@ -71,8 +72,24 @@ This document provides a comprehensive ledger of all completed implementation ph
   - Synthesizes defensive YARA detection signatures matching APK zip headers, package name, anti-analysis strings, and unique observed C2 endpoints.
 - **Step 5.7: [orchestrator.py](file:///Users/puredent/Desktop/dbug/orchestrator.py)**
   - Master CLI coordinating all gates G0 through G5 end-to-end with automated teardown, reporting, and canonical target directory synchronization (`targets/<sample_hash>/`).
-- **Step 5.8: [tests/test_framework_e2e.py](file:///Users/puredent/Desktop/dbug/tests/test_framework_e2e.py)**
-  - Comprehensive 12-test automated end-to-end test suite providing 100% reproducible validation of the entire pipeline.
+
+### Phase 6: Commercial AppSec, API Discovery & Privacy Auditing (First-Class Non-Malware)
+- **Step 6.1: [config/tracker_catalog.json](file:///Users/puredent/Desktop/dbug/config/tracker_catalog.json)**
+  - Taxonomy of top mobile tracking, advertising, and analytics networks (Meta, Google, AppsFlyer, Adjust, Kochava, TikTok, Branch, Mixpanel, Sentry, Unity Ads).
+- **Step 6.2: [parser_correlator/privacy_auditor.py](file:///Users/puredent/Desktop/dbug/parser_correlator/privacy_auditor.py)**
+  - Evaluates PII leakage to third-party ad networks, checks GDPR/CCPA data disclosure compliance, and generates `PRIVACY_AUDIT.md` and `privacy_findings.json`.
+- **Step 6.3: [parser_correlator/appsec_auditor.py](file:///Users/puredent/Desktop/dbug/parser_correlator/appsec_auditor.py)**
+  - OWASP MASVS cryptographic audit (detecting AES/ECB modes, static IVs, deprecated ciphers) and automated synthesis of OpenAPI 3.0 specification (`openapi_spec.json`) and `API_SECURITY_REPORT.md`.
+- **Step 6.4: Interactive Testing & Multi-Profile Support in [orchestrator.py](file:///Users/puredent/Desktop/dbug/orchestrator.py)**
+  - Adds `--profile {malware,privacy,appsec,all}` and `--interactive` mode allowing human penetration testers to navigate protected apps while capture runs.
+- **Step 6.5: [tests/test_framework_e2e.py](file:///Users/puredent/Desktop/dbug/tests/test_framework_e2e.py)**
+  - 16 automated test suites providing 100% test coverage across all tool modules and profiles.
+- **Step 6.6: Universal Non-Malware Doctrine & Operating Procedures**
+  - Updated [AGENTS.md](file:///Users/puredent/Desktop/dbug/AGENTS.md), [REPO_ROADMAP.md](file:///Users/puredent/Desktop/dbug/REPO_ROADMAP.md), created [README.md](file:///Users/puredent/Desktop/dbug/README.md), [docs/SOP.md](file:///Users/puredent/Desktop/dbug/docs/SOP.md), and [task-non-malware.md](file:///Users/puredent/Desktop/dbug/task-non-malware.md).
+- **Step 6.7: Profile-Aware Dynamic Reporting in [orchestrator.py](file:///Users/puredent/Desktop/dbug/orchestrator.py)**
+  - Automatically tailors `REPORT.md` and `TARGET.md` to the active operational profile (`privacy`, `appsec`, `all`, `malware`).
+- **Step 6.8: Specialized Skills for Non-Malware Workflows**
+  - Created `.claude/skills/dbug-privacy-audit/SKILL.md` and `.claude/skills/dbug-appsec-masvs/SKILL.md`.
 
 ---
 
@@ -82,5 +99,9 @@ This document provides a comprehensive ledger of all completed implementation ph
 - **[task-step3.md](file:///Users/puredent/Desktop/dbug/task-step3.md):** Phase 3 plan & task specifications.
 - **[task-step4.md](file:///Users/puredent/Desktop/dbug/task-step4.md):** Phase 4 plan & task specifications.
 - **[task-step5.md](file:///Users/puredent/Desktop/dbug/task-step5.md):** Phase 5 plan & task specifications.
+- **[task-step6.md](file:///Users/puredent/Desktop/dbug/task-step6.md):** Phase 6 plan & task specifications for Non-Malware AppSec & Privacy Auditing.
+- **[task-non-malware.md](file:///Users/puredent/Desktop/dbug/task-non-malware.md):** Non-Malware First-Class architectural blueprint.
 - **[docs/steps.md](file:///Users/puredent/Desktop/dbug/docs/steps.md):** Chronological engineering ledger with evidence citations `[C]`, `[M]`, `[N]`, `[E]`.
 - **[problem_solution.md](file:///Users/puredent/Desktop/dbug/problem_solution.md):** Log of all problems identified and engineering solutions implemented.
+
+

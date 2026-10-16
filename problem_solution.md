@@ -137,3 +137,41 @@ This ledger documents technical hurdles, anti-analysis evasion traps, and operat
   - Implemented `sync_canonical_target_repo()` in `orchestrator.py`.
   - Automatically updates `targets/<sample_hash>/` and `targets/current_sample/` with `TARGET.md` (gates marked PASS), `SOURCES.md`, `FACTS.md`, `STATIC_AUDIT.md`, `ANALYSIS.md`, `REPORT.md`, `LOG.md`, and `IOCS.json`.
 
+---
+
+### 14. Evasion of Commercial RASP & Anti-Tamper Protections in AppSec Audits
+- **Problem / Hurdle:** Commercial enterprise and banking applications employ sophisticated RASP protections (DexGuard, Promon SHIELD, Arsan) that crash or exit upon detecting USB debugging or proxy settings, preventing penetration testing.
+- **Root Cause:** AppSec auditors traditionally rely on manual Wi-Fi proxies (Burp Suite, Charles) and user CA certificates, both of which are instantly fingerprinted.
+- **Solution:**
+  - Applied `dbug`'s out-of-band architecture to commercial testing via `--profile appsec`.
+  - Routes traffic through Linux Wi-Fi AP (`ap0`) and decrypts TLS via eBPF Conscrypt uprobes on `wlan0`. Zero proxy and zero user CA certificates are used, allowing analysts to inspect API traffic of heavily protected commercial apps cleanly.
+
+---
+
+### 15. Covert PII Transmission into Third-Party Advertising SDKs
+- **Problem / Hurdle:** Commercial mobile applications frequently bundle closed-source ad attribution and analytics SDKs (Meta Graph, AppsFlyer, TikTok Pangle) that harvest clipboard data, contacts, or device identifiers without disclosure in privacy policies.
+- **Root Cause:** Third-party SDK traffic is encrypted inside standard HTTPS tunnels and mixed with legitimate first-party application calls.
+- **Solution:**
+  - Implemented `parser_correlator/privacy_auditor.py` and `config/tracker_catalog.json` (`--profile privacy`).
+  - Classifies destination endpoints into First-Party vs Third-Party Trackers and correlates canary data hits, generating compliance findings under GDPR Art. 5/6 and CCPA.
+
+---
+
+### 16. Manual API Discovery and OpenAPI Specification Bottleneck
+- **Problem / Hurdle:** Mobile application penetration testing and API fuzzing require importing target endpoints into Burp Suite, Postman, or OWASP ZAP. Manually constructing API schemas from decrypted PCAP flows is time-consuming and error-prone.
+- **Root Cause:** Mobile applications lack public OpenAPI/Swagger definitions.
+- **Solution:**
+  - Implemented automated OpenAPI 3.0 specification synthesis in `parser_correlator/appsec_auditor.py`.
+  - Automatically extracts unique HTTP paths, query parameters, methods, and JSON request bodies from decrypted flows, writing `openapi_spec.json` ready for immediate fuzzing tool ingestion.
+
+---
+
+### 17. Single-Domain Tooling Bias (Malware-Centric Reporting Bias)
+- **Problem / Hurdle:** Commercial AppSec penetration testers and privacy compliance auditors were presented with malware threat intelligence terminology ("C2 Servers", "Bot Tokens", "Banking Trojan") when evaluating legitimate fintech or e-commerce apps.
+- **Root Cause:** Static templates in `orchestrator.py` hardcoded malware classification headers for `TARGET.md` and `REPORT.md` regardless of the input target type.
+- **Solution:**
+  - Refactored `orchestrator.py` `_sync_target_workspace` to dynamically tailor `REPORT.md` and `TARGET.md` based on `--profile {malware,privacy,appsec,all}`.
+  - Authored comprehensive `README.md`, `docs/SOP.md`, and updated `AGENTS.md` and `REPO_ROADMAP.md` to elevate commercial AppSec and privacy auditing to co-equal first-class citizens.
+
+
+

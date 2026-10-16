@@ -78,8 +78,21 @@ dbug/
 
 ---
 
-### Phase 5: Traffic Decryption, Canary Correlation & IOC Reporting (`parser_correlator/` & `orchestrator.py`)
-**Goal:** Automatically correlate what the malware stole in memory with the exact remote server it contacted.
+### Phase 5: Traffic Decryption, Canary Correlation & Threat Intelligence (`parser_correlator/` & `orchestrator.py`)
+**Goal:** Automatically correlate what the malware stole in memory with the exact remote server it contacted, extract C2 protocols, classify malware family, and generate STIX 2.1 bundles.
 - **Step 5.1:** Write `parser_correlator/pcap_decryptor.py` using `tshark` / `pyshark` to combine the raw gateway PCAP and eCapture TLS keylog into a unified decrypted HTTP/TCP stream log.
 - **Step 5.2:** Write `parser_correlator/canary_hunter.py` to scan both the Frida `Cipher.doFinal` dumps and the decrypted PCAP streams for any string matching `config/mock_canaries.json`, flagging the exact timestamp and destination IP/URL where exfiltration occurred.
-- **Step 5.3:** Write `parser_correlator/ioc_extractor.py` and `orchestrator.py` to tie all phases into a single CLI workflow (`python3 orchestrator.py --apk sample.apk --duration 120`) that outputs a final Markdown and JSON threat report.
+- **Step 5.3:** Write `parser_correlator/c2_protocol_decoder.py` to reconstruct custom C2 transports and frame parsing.
+- **Step 5.4:** Write `parser_correlator/family_classifier.py` for behavioral heuristic malware attribution (SharkBot, Ermac, Vultur, SpyNote, Cerberus, Teabot).
+- **Step 5.5:** Write `parser_correlator/yara_generator.py` for automated defensive YARA rule synthesis.
+- **Step 5.6:** Write `parser_correlator/ioc_extractor.py` and `orchestrator.py` to tie all phases into a single CLI workflow generating STIX 2.1 bundles and markdown reports.
+
+---
+
+### Phase 6: Commercial AppSec, Privacy Auditing & Interactive Pen-Testing (First-Class Non-Malware)
+**Goal:** Leverage zero-trace out-of-band capture and device cloaking to bypass commercial RASP (DexGuard, Promon, AppSealing) and evaluate commercial apps for privacy leakage and OWASP MASVS compliance.
+- **Step 6.1:** Build `config/tracker_catalog.json` establishing a structured taxonomy of top mobile ad attribution, analytics, and tracking SDKs.
+- **Step 6.2:** Build `parser_correlator/privacy_auditor.py` to correlate decrypted HTTP flows against the tracker taxonomy and canary tokens, generating `PRIVACY_AUDIT.md` and `privacy_findings.json` for GDPR/CCPA compliance.
+- **Step 6.3:** Build `parser_correlator/appsec_auditor.py` to perform OWASP MASVS cryptographic hygiene audits (detecting AES/ECB, static IVs, deprecated ciphers) and synthesize a valid OpenAPI 3.0 specification (`openapi_spec.json`) for automated API fuzzing.
+- **Step 6.4:** Implement multi-profile execution (`--profile {malware,privacy,appsec,all}`) and human-in-the-loop interactive mode (`--interactive`) in `orchestrator.py`.
+- **Step 6.5:** Expand automated test suite in `tests/test_framework_e2e.py` to 16 comprehensive suites covering all profiles and verification criteria.

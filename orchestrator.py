@@ -80,12 +80,14 @@ def parse_lab_config(config_path):
 
 class MasterOrchestrator:
     def __init__(self, apk_path, package_name, duration=120, config_path="config/lab_config.yaml",
-                 output_dir=None, dry_run=False):
+                 output_dir=None, dry_run=False, profile="malware", interactive=False):
         self.apk_path = apk_path
         self.package_name = package_name
         self.duration = duration
         self.config_path = config_path
         self.dry_run = dry_run
+        self.profile = profile.lower()
+        self.interactive = interactive
 
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_dir = output_dir or f"./sessions/session_{ts}_{self.package_name}"
@@ -109,14 +111,15 @@ class MasterOrchestrator:
         return True
 
     def execute_pipeline(self):
-        """Executes the complete 7-stage automated analysis pipeline."""
+        """Executes the complete multi-profile automated analysis pipeline."""
         print("=" * 65)
-        print("dbug MASTER AUTOMATED STEALTH MALWARE ANALYSIS PIPELINE")
+        print("dbug MASTER AUTOMATED STEALTH MOBILE SECURITY PIPELINE")
         print("=" * 65)
         print(f"Target Package:  {self.package_name}")
         print(f"Sample Path:     {self.apk_path}")
         print(f"SHA-256:         {self.sha256}")
-        print(f"Observation:     {self.duration} seconds")
+        print(f"Profile:         {self.profile.upper()}")
+        print(f"Observation:     {'INTERACTIVE (User Controlled)' if self.interactive else f'{self.duration} seconds'}")
         print(f"Output Session:  {self.output_dir}")
         print(f"Dry-Run Mode:    {self.dry_run}")
         print("=" * 65)
@@ -192,6 +195,23 @@ class MasterOrchestrator:
 
         self.run_stage("Gate G4: Stealth Frida Spawn & Telemetry Stream", frida_cmd, check=False)
 
+        if self.interactive:
+            if not self.dry_run:
+                print("\n" + "=" * 65)
+                print("[*] INTERACTIVE ZERO-TRACE CAPTURE SESSION ACTIVE")
+                print("=" * 65)
+                print("You may now interact with the target application on the physical phone:")
+                print(" - Navigate views, authenticate, trigger APIs, or complete workflows.")
+                print(" - Network traffic and cryptographic buffers are captured out-of-band.")
+                print("Press ENTER (or Ctrl+C) when finished to commence teardown and auditing...")
+                print("=" * 65)
+                try:
+                    input()
+                except (KeyboardInterrupt, EOFError):
+                    print("\n[*] Interactive session concluded by analyst signal.")
+            else:
+                print("[+] [DRY-RUN] Interactive capture session simulated.")
+
         # -------------------------------------------------------------
         # Stage 5: Teardown & Capture Artifact Collection
         # -------------------------------------------------------------
@@ -247,39 +267,59 @@ class MasterOrchestrator:
         ]
         self.run_stage("Gate G5: Multi-Encoding Canary Hunter", hunter_cmd, check=False)
 
-        # C2 Protocol Dissector & Framing Reconstruction
-        proto_cmd = [
-            py_bin, "parser_correlator/c2_protocol_decoder.py",
-            "--session-dir", self.output_dir,
-            "--package", self.package_name
-        ]
-        self.run_stage("Gate G5: C2 Protocol Framing Reconstruction", proto_cmd, check=False)
+        # Profile: Malware Analysis & Threat Intelligence
+        if self.profile in ["malware", "all"]:
+            # C2 Protocol Dissector & Framing Reconstruction
+            proto_cmd = [
+                py_bin, "parser_correlator/c2_protocol_decoder.py",
+                "--session-dir", self.output_dir,
+                "--package", self.package_name
+            ]
+            self.run_stage("Gate G5: C2 Protocol Framing Reconstruction", proto_cmd, check=False)
 
-        # Malware Family Attribution Classifier
-        fam_cmd = [
-            py_bin, "parser_correlator/family_classifier.py",
-            "--session-dir", self.output_dir,
-            "--package", self.package_name
-        ]
-        self.run_stage("Gate G5: Behavioral Family Attribution", fam_cmd, check=False)
+            # Malware Family Attribution Classifier
+            fam_cmd = [
+                py_bin, "parser_correlator/family_classifier.py",
+                "--session-dir", self.output_dir,
+                "--package", self.package_name
+            ]
+            self.run_stage("Gate G5: Behavioral Family Attribution", fam_cmd, check=False)
 
-        # IOC Extractor & Threat Report Generator
-        ioc_cmd = [
-            py_bin, "parser_correlator/ioc_extractor.py",
-            "--session-dir", self.output_dir,
-            "--package", self.package_name,
-            "--sha256", self.sha256
-        ]
-        self.run_stage("Gate G5: IOC & STIX 2.1 Threat Report Generation", ioc_cmd, check=False)
+            # IOC Extractor & Threat Report Generator
+            ioc_cmd = [
+                py_bin, "parser_correlator/ioc_extractor.py",
+                "--session-dir", self.output_dir,
+                "--package", self.package_name,
+                "--sha256", self.sha256
+            ]
+            self.run_stage("Gate G5: IOC & STIX 2.1 Threat Report Generation", ioc_cmd, check=False)
 
-        # Defensive YARA Rule Generator
-        yara_cmd = [
-            py_bin, "parser_correlator/yara_generator.py",
-            "--session-dir", self.output_dir,
-            "--package", self.package_name,
-            "--sha256", self.sha256
-        ]
-        self.run_stage("Gate G5: Defensive YARA Signature Generation", yara_cmd, check=False)
+            # Defensive YARA Rule Generator
+            yara_cmd = [
+                py_bin, "parser_correlator/yara_generator.py",
+                "--session-dir", self.output_dir,
+                "--package", self.package_name,
+                "--sha256", self.sha256
+            ]
+            self.run_stage("Gate G5: Defensive YARA Signature Generation", yara_cmd, check=False)
+
+        # Profile: Privacy & Ad Tracker Data Leakage Audit
+        if self.profile in ["privacy", "all"]:
+            priv_cmd = [
+                py_bin, "parser_correlator/privacy_auditor.py",
+                "--session-dir", self.output_dir,
+                "--package", self.package_name
+            ]
+            self.run_stage("Gate G5: Mobile Privacy & Tracker Leakage Audit", priv_cmd, check=False)
+
+        # Profile: AppSec Penetration Testing & API Discovery
+        if self.profile in ["appsec", "all"]:
+            appsec_cmd = [
+                py_bin, "parser_correlator/appsec_auditor.py",
+                "--session-dir", self.output_dir,
+                "--package", self.package_name
+            ]
+            self.run_stage("Gate G5: OWASP MASVS AppSec & API Security Audit", appsec_cmd, check=False)
 
         # Sync canonical target workspace per AGENTS.md contract
         self.sync_canonical_target_repo()
@@ -290,17 +330,29 @@ class MasterOrchestrator:
         print("\n" + "=" * 65)
         print("ANALYSIS SESSION COMPLETE - DELIVERABLES SUMMARY")
         print("=" * 65)
+        print(f"Operational Profile:     {self.profile.upper()}")
         print(f"Session Directory:       {self.output_dir}")
         print(f"Gate G0 Static Triage:   {os.path.join(self.output_dir, 'STATIC_AUDIT.md')}")
-        print(f"C2 Protocol Spec:        {os.path.join(self.output_dir, 'C2_PROTOCOL.md')}")
-        print(f"Family Attribution:      {os.path.join(self.output_dir, 'FAMILY_ATTRIBUTION.json')}")
         print(f"Decrypted Network Flows: {decrypted_jsonl}")
         print(f"Crypto Telemetry Events: {events_log}")
         print(f"Canary Exfiltration Proof: {canary_hits_json}")
-        print(f"Extracted IOCs (JSON):   {os.path.join(self.output_dir, 'iocs.json')}")
-        print(f"Defensive YARA Rule:     {os.path.join(self.output_dir, f'Android_Infostealer_{re.sub(r'[^a-zA-Z0-9_]', '_', self.package_name)}_{self.sha256[:8]}.yar')}")
-        print(f"STIX 2.1 Bundle:         {os.path.join(self.output_dir, 'threat_report_stix21.json')}")
-        print(f"Executive Report (MD):   {os.path.join(self.output_dir, 'analysis_report.md')}")
+
+        if self.profile in ["malware", "all"]:
+            print(f"C2 Protocol Spec:        {os.path.join(self.output_dir, 'C2_PROTOCOL.md')}")
+            print(f"Family Attribution:      {os.path.join(self.output_dir, 'FAMILY_ATTRIBUTION.json')}")
+            print(f"Extracted IOCs (JSON):   {os.path.join(self.output_dir, 'iocs.json')}")
+            print(f"Defensive YARA Rule:     {os.path.join(self.output_dir, f'Android_Infostealer_{re.sub(r'[^a-zA-Z0-9_]', '_', self.package_name)}_{self.sha256[:8]}.yar')}")
+            print(f"STIX 2.1 Bundle:         {os.path.join(self.output_dir, 'threat_report_stix21.json')}")
+            print(f"Executive Report (MD):   {os.path.join(self.output_dir, 'analysis_report.md')}")
+
+        if self.profile in ["privacy", "all"]:
+            print(f"Privacy Audit (MD):      {os.path.join(self.output_dir, 'PRIVACY_AUDIT.md')}")
+            print(f"Privacy Findings (JSON): {os.path.join(self.output_dir, 'privacy_findings.json')}")
+
+        if self.profile in ["appsec", "all"]:
+            print(f"AppSec Audit (MD):       {os.path.join(self.output_dir, 'API_SECURITY_REPORT.md')}")
+            print(f"OpenAPI 3.0 Spec (JSON): {os.path.join(self.output_dir, 'openapi_spec.json')}")
+
         print(f"Canonical Target Dir:    targets/{self.sha256}/")
         print("=" * 65)
 
@@ -311,11 +363,82 @@ class MasterOrchestrator:
         current_sample_dir = os.path.join("targets", "current_sample")
         os.makedirs(current_sample_dir, exist_ok=True)
 
+        # Determine classification and report template based on operational profile
+        if self.profile == "privacy":
+            classification = "Commercial Mobile Application (Privacy & Compliance Audit)"
+            exec_title = f"# Executive Mobile Privacy Audit & Data Compliance Report: {self.package_name}"
+            exec_summary = (
+                f"Dynamic privacy auditing of `{self.package_name}` was conducted under zero-footprint stealth monitoring.\n"
+                "All outgoing network flows and canary credentials were correlated against the commercial tracking taxonomy.\n"
+                "The target application was evaluated against GDPR Article 5/6 principles and CCPA data disclosure mandates."
+            )
+            key_deliverables = """## Key Deliverables & Artifacts
+- **Privacy Audit Report:** [`PRIVACY_AUDIT.md`](PRIVACY_AUDIT.md)
+- **Machine-Readable Findings:** [`privacy_findings.json`](privacy_findings.json)
+- **Traffic & Flow Analysis:** [`ANALYSIS.md`](ANALYSIS.md)
+- **Static Manifest Audit:** [`STATIC_AUDIT.md`](STATIC_AUDIT.md)
+- **Verified Facts:** [`FACTS.md`](FACTS.md)
+- **Canary Exfiltration Proof:** `CANARY_EXFIL_HITS.json`
+"""
+        elif self.profile == "appsec":
+            classification = "Commercial Mobile Application (Security Assessment & Pen-Testing)"
+            exec_title = f"# Executive Mobile Application Security & API Assessment: {self.package_name}"
+            exec_summary = (
+                f"Dynamic penetration testing and security assessment of `{self.package_name}` was conducted under zero-footprint stealth monitoring.\n"
+                "Cryptographic operations were evaluated against OWASP MASVS standards (MASVS-CRYPTO).\n"
+                "All intercepted HTTP endpoints were automatically synthesized into an OpenAPI 3.0 specification for automated fuzzing."
+            )
+            key_deliverables = """## Key Deliverables & Artifacts
+- **API Security Report:** [`API_SECURITY_REPORT.md`](API_SECURITY_REPORT.md)
+- **OpenAPI 3.0 Specification:** [`openapi_spec.json`](openapi_spec.json)
+- **Runtime Telemetry:** [`ANALYSIS.md`](ANALYSIS.md)
+- **Static Manifest Audit:** [`STATIC_AUDIT.md`](STATIC_AUDIT.md)
+- **Verified Facts:** [`FACTS.md`](FACTS.md)
+- **Crypto & Socket Telemetry:** `instrumentation_events.jsonl`
+"""
+        elif self.profile == "all":
+            classification = "Universal Dynamic Assessment (Malware Intel, Privacy & AppSec)"
+            exec_title = f"# Comprehensive Mobile Security, Privacy & Threat Assessment: {self.package_name}"
+            exec_summary = (
+                f"Full-spectrum dynamic assessment of `{self.package_name}` was conducted under zero-trace stealth monitoring.\n"
+                "The analysis unified adversarial threat intelligence extraction, commercial privacy leak auditing, and OWASP MASVS cryptographic/API assessment."
+            )
+            key_deliverables = """## Key Deliverables & Artifacts
+- **Application Security & API Audit:** [`API_SECURITY_REPORT.md`](API_SECURITY_REPORT.md)
+- **OpenAPI 3.0 Specification:** [`openapi_spec.json`](openapi_spec.json)
+- **Privacy & Compliance Audit:** [`PRIVACY_AUDIT.md`](PRIVACY_AUDIT.md)
+- **Privacy Findings JSON:** [`privacy_findings.json`](privacy_findings.json)
+- **Threat Intelligence Findings:** [`ANALYSIS.md`](ANALYSIS.md)
+- **Indicators of Compromise:** [`IOCS.json`](IOCS.json)
+- **STIX 2.1 Threat Bundle:** `threat_report_stix21.json`
+- **C2 Protocol Framing:** `C2_PROTOCOL.md`
+- **Static Manifest Audit:** [`STATIC_AUDIT.md`](STATIC_AUDIT.md)
+- **Verified Facts:** [`FACTS.md`](FACTS.md)
+"""
+        else:  # malware
+            classification = "Android Infostealer / Evasive Malware Sample"
+            exec_title = f"# Executive Threat Intelligence Report: {self.package_name}"
+            exec_summary = (
+                f"Dynamic analysis of sample `{self.package_name}` was conducted under zero-footprint stealth monitoring.\n"
+                "All anti-analysis cues were neutralized out-of-process via `resetprop` and LSPosed `HideDevMode`.\n"
+                "Network traffic was decrypted out-of-band via Linux kernel eBPF Conscrypt uprobes on `wlan0`."
+            )
+            key_deliverables = """## Key Deliverables & Artifacts
+- **Executive Findings:** [`ANALYSIS.md`](ANALYSIS.md)
+- **Extracted IOCs:** [`IOCS.json`](IOCS.json)
+- **Verified Facts:** [`FACTS.md`](FACTS.md)
+- **Static Audit:** [`STATIC_AUDIT.md`](STATIC_AUDIT.md)
+- **STIX 2.1 Bundle:** `threat_report_stix21.json`
+- **C2 Protocol Framing:** `C2_PROTOCOL.md`
+- **Family Attribution:** `FAMILY_ATTRIBUTION.json`
+"""
+
         target_md_content = f"""# Target Profile: {self.sha256}
 
 - **Package Name:** `{self.package_name}`
 - **SHA-256:** `{self.sha256}`
-- **Classification:** Android Infostealer / Banking Trojan
+- **Classification:** {classification}
+- **Profile Mode:** `{self.profile}`
 - **Intake Date:** {datetime.date.today().isoformat()}
 
 ## Gate Status Ledger
@@ -370,27 +493,17 @@ class MasterOrchestrator:
                 with open(os.path.join(t_dir, "IOCS.json"), "w", encoding="utf-8") as f:
                     f.write(iocs_content)
 
-        report_content = f"""# Executive Threat Intelligence Report: {self.package_name}
+        report_content = f"""{exec_title}
 
 - **Sample SHA-256:** `{self.sha256}`
 - **Package Name:** `{self.package_name}`
-- **Analysis Mode:** Automated Stealth Dynamic Sandbox
+- **Operational Profile:** `{self.profile}`
 - **Date:** {datetime.date.today().isoformat()}
 
 ## Executive Summary
-Dynamic analysis of sample `{self.package_name}` was conducted under zero-footprint stealth monitoring.
-All anti-analysis cues were neutralized out-of-process via `resetprop` and LSPosed `HideDevMode`.
-Network traffic was decrypted out-of-band via Linux kernel eBPF Conscrypt uprobes on `wlan0`.
+{exec_summary}
 
-## Key Deliverables & Artifacts
-- **Executive Findings:** [`ANALYSIS.md`](ANALYSIS.md)
-- **Extracted IOCs:** [`IOCS.json`](IOCS.json)
-- **Verified Facts:** [`FACTS.md`](FACTS.md)
-- **Static Audit:** [`STATIC_AUDIT.md`](STATIC_AUDIT.md)
-- **STIX 2.1 Bundle:** `threat_report_stix21.json`
-- **C2 Protocol Framing:** `C2_PROTOCOL.md`
-- **Family Attribution:** `FAMILY_ATTRIBUTION.json`
-"""
+{key_deliverables}"""
         for t_dir in [targets_base, current_sample_dir]:
             with open(os.path.join(t_dir, "REPORT.md"), "w", encoding="utf-8") as f:
                 f.write(report_content)
@@ -406,6 +519,40 @@ Network traffic was decrypted out-of-band via Linux kernel eBPF Conscrypt uprobe
             with open(os.path.join(t_dir, "LOG.md"), "w", encoding="utf-8") as f:
                 f.write(log_content)
 
+        # Sync Privacy Profile Deliverables
+        priv_audit = os.path.join(self.output_dir, "PRIVACY_AUDIT.md")
+        if os.path.exists(priv_audit):
+            with open(priv_audit, "r", encoding="utf-8") as f:
+                priv_content = f.read()
+            for t_dir in [targets_base, current_sample_dir]:
+                with open(os.path.join(t_dir, "PRIVACY_AUDIT.md"), "w", encoding="utf-8") as f:
+                    f.write(priv_content)
+
+        priv_json = os.path.join(self.output_dir, "privacy_findings.json")
+        if os.path.exists(priv_json):
+            with open(priv_json, "r", encoding="utf-8") as f:
+                pjson_content = f.read()
+            for t_dir in [targets_base, current_sample_dir]:
+                with open(os.path.join(t_dir, "privacy_findings.json"), "w", encoding="utf-8") as f:
+                    f.write(pjson_content)
+
+        # Sync AppSec Profile Deliverables
+        appsec_report = os.path.join(self.output_dir, "API_SECURITY_REPORT.md")
+        if os.path.exists(appsec_report):
+            with open(appsec_report, "r", encoding="utf-8") as f:
+                appsec_content = f.read()
+            for t_dir in [targets_base, current_sample_dir]:
+                with open(os.path.join(t_dir, "API_SECURITY_REPORT.md"), "w", encoding="utf-8") as f:
+                    f.write(appsec_content)
+
+        openapi_spec = os.path.join(self.output_dir, "openapi_spec.json")
+        if os.path.exists(openapi_spec):
+            with open(openapi_spec, "r", encoding="utf-8") as f:
+                spec_content = f.read()
+            for t_dir in [targets_base, current_sample_dir]:
+                with open(os.path.join(t_dir, "openapi_spec.json"), "w", encoding="utf-8") as f:
+                    f.write(spec_content)
+
         static_audit = os.path.join(self.output_dir, "STATIC_AUDIT.md")
         if os.path.exists(static_audit):
             with open(static_audit, "r", encoding="utf-8") as f:
@@ -420,11 +567,14 @@ Network traffic was decrypted out-of-band via Linux kernel eBPF Conscrypt uprobe
 
 def main():
     parser = argparse.ArgumentParser(
-        description="dbug Master Automated Stealth Malware Analysis Sandbox"
+        description="dbug Master Automated Stealth Mobile Security Sandbox"
     )
     parser.add_argument("--apk", default=None, help="Path to target sample APK")
     parser.add_argument("--package", default=None, help="Target Android package name")
-    parser.add_argument("--duration", type=int, default=120, help="Observation window in seconds (default: 120)")
+    parser.add_argument("--profile", choices=["malware", "privacy", "appsec", "all"], default=None,
+                        help="Analysis operational profile (malware, privacy, appsec, all) [default from config: malware]")
+    parser.add_argument("--duration", type=int, default=None, help="Observation window in seconds (default from config: 120)")
+    parser.add_argument("--interactive", action="store_true", help="Run interactive human-in-the-loop observation session")
     parser.add_argument("--config", default="config/lab_config.yaml", help="Path to lab_config.yaml")
     parser.add_argument("--output-dir", default=None, help="Custom output directory")
     parser.add_argument("--dry-run", action="store_true", help="Run end-to-end simulation across all gates")
@@ -437,6 +587,7 @@ def main():
     apk = args.apk or sample_cfg.get("apk_path", "samples/sample.apk")
     package = args.package or sample_cfg.get("package_name", "com.example.malware")
     duration = args.duration or def_cfg.get("duration_seconds", 120)
+    profile = args.profile or def_cfg.get("profile", "malware")
 
     orchestrator = MasterOrchestrator(
         apk_path=apk,
@@ -444,7 +595,9 @@ def main():
         duration=duration,
         config_path=args.config,
         output_dir=args.output_dir,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        profile=profile,
+        interactive=args.interactive
     )
 
     orchestrator.execute_pipeline()

@@ -135,3 +135,53 @@ Format conforms to `dbug-step-rationale`. Timestamps are in Asia/Saigon (+07:00)
   **Evidence:** [C] Test suite test runner output in `tests/test_framework_e2e.py`.
   **Revisit if:** New pipeline stages or CLI options are introduced.
 
+- **Step:** Implemented curated mobile tracking and analytics taxonomy in `config/tracker_catalog.json`.
+  **Decision:** Standardized on signatures for top 10 advertising, attribution, and analytics networks (Meta Graph, Firebase, AppsFlyer, Adjust, Kochava, TikTok Pangle, Branch, Mixpanel, Sentry, Unity Ads); rejected: unstructured domain lists without risk ratings.
+  **Rationale:** Distinguishing First-Party API backends from Third-Party ad trackers enables automated compliance audits under GDPR and CCPA.
+  **Evidence:** [C] `config/tracker_catalog.json`.
+  **Revisit if:** New advertising networks or regional tracking SDKs (e.g., in Asia/EU markets) are observed.
+
+- **Step:** Implemented mobile app privacy & data leakage auditor in `parser_correlator/privacy_auditor.py`.
+  **Decision:** Automated correlation of decrypted flows and canary hits against the tracker taxonomy, outputting `PRIVACY_AUDIT.md` and `privacy_findings.json`; rejected: manual log inspection for privacy auditing.
+  **Rationale:** Enables immediate regulatory compliance reporting (GDPR Article 5 Data Minimization, CCPA Notice Requirements, and App Store Privacy Manifest audits) for commercial apps.
+  **Evidence:** [N] Decrypted network flows; [M] canary correlation hits.
+  **Revisit if:** Target application uses encrypted proprietary protobuf tracking envelopes.
+
+- **Step:** Implemented OWASP MASVS AppSec auditor and OpenAPI 3.0 synthesizer in `parser_correlator/appsec_auditor.py`.
+  **Decision:** Automated cryptographic hygiene checks (MASVS-CRYPTO-1 ECB mode, static IVs, deprecated ciphers) and synthesized valid OpenAPI 3.0 JSON specification (`openapi_spec.json`) alongside `API_SECURITY_REPORT.md`; rejected: manual Swagger authoring.
+  **Rationale:** Directly bridges out-of-band mobile packet captures with penetration testing tools (Postman, Burp Suite, OWASP ZAP) without breaking certificate pinning.
+  **Evidence:** [M] `Cipher.init` parameters; [N] decrypted REST/GraphQL flows.
+  **Revisit if:** Application adopts gRPC over HTTP/2 framing.
+
+- **Step:** Integrated multi-profile engine and interactive testing mode into `orchestrator.py`.
+  **Decision:** Added `--profile {malware,privacy,appsec,all}` and `--interactive` mode allowing human testers to navigate protected apps while capture runs; rejected: forcing malware-only reporting on commercial apps.
+  **Rationale:** Elevates `dbug` into a universal mobile security platform for both adversarial threat intelligence and defensive commercial application auditing.
+  **Evidence:** [C] `orchestrator.py` CLI interface; [C] `tests/test_framework_e2e.py` (16 tests pass).
+  **Revisit if:** Additional profiles (e.g. IoT companion auditing, Bluetooth BLE tracking) are required.
+
+- **Step:** Formulated Non-Malware First-Class Architecture Plan in `task-non-malware.md`.
+  **Decision:** Formalized a triple-track operational architecture (`malware`, `privacy`, `appsec`, `all`) that leverages the exact same zero-trace out-of-band capture and cloaking foundation to evade both malware evasion checks and commercial RASP engines; rejected: treating non-malware as a peripheral plugin.
+  **Rationale:** Commercial banking, fintech, and enterprise apps use the exact same anti-tamper and anti-debugging checks as infostealers; an out-of-band architecture solves interception for both domains identically.
+  **Evidence:** [C] `task-non-malware.md` architecture specification.
+  **Revisit if:** New regulatory compliance frameworks (e.g. EU NIS2, DORA) require custom reporting sections.
+
+- **Step:** Promoted Non-Malware Doctrine into `AGENTS.md`, `REPO_ROADMAP.md`, `README.md`, and `docs/SOP.md`.
+  **Decision:** Updated system mandate, minimal prompts, RASP equivalence matrix, workspace layout, and gates ledger to elevate commercial application security and privacy auditing to co-equal first-class citizens alongside malware analysis; authored comprehensive `README.md` and `docs/SOP.md` runbook; rejected: keeping repository documentation malware-exclusive.
+  **Rationale:** Ensures any autonomous agent or human analyst operating `dbug` understands the complete operational boundaries across malware threat intelligence, privacy auditing, and interactive penetration testing.
+  **Evidence:** [C] `AGENTS.md`, `REPO_ROADMAP.md`, `README.md`, `docs/SOP.md`.
+  **Revisit if:** Core operational contracts or prompt schemas are updated.
+
+- **Step:** Implemented profile-tailored executive reporting in `orchestrator.py`.
+  **Decision:** Dynamically tailored `REPORT.md` and `TARGET.md` classifications, executive summaries, and artifact lists based on active profile (`privacy`, `appsec`, `all`, `malware`); added YAML config fallback in `config/lab_config.yaml`; rejected: hardcoding malware threat intel headers for privacy and appsec audits.
+  **Rationale:** Delivers clear, professional executive reports appropriate for regulatory auditors and AppSec stakeholders without irrelevant malware C2 terminology.
+  **Evidence:** [C] `orchestrator.py`; [D] verified via `--dry-run` across all profiles.
+  **Revisit if:** Additional executive templates are requested.
+
+- **Step:** Created specialized Claude skills for Non-Malware workflows.
+  **Decision:** Added `.claude/skills/dbug-privacy-audit/SKILL.md` (tracker taxonomy, canary PII leakage, GDPR/CCPA compliance) and `.claude/skills/dbug-appsec-masvs/SKILL.md` (OWASP MASVS crypto hygiene, OpenAPI 3.0 generation, interactive pen-testing); rejected: monolithic skill file.
+  **Rationale:** Follows the established modular skill architecture for agentic onboarding and task delegation.
+  **Evidence:** [C] `.claude/skills/dbug-privacy-audit/SKILL.md`, `.claude/skills/dbug-appsec-masvs/SKILL.md`.
+  **Revisit if:** New mobile security standards (e.g. MASVS v2 updates) are published.
+
+
+

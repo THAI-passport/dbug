@@ -249,6 +249,67 @@ class TestDbugFramework(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(target_dir, "LOG.md")))
             self.assertTrue(os.path.exists(os.path.join(target_dir, "IOCS.json")))
 
+    def test_13_privacy_auditor(self):
+        """Profile Privacy: Test mobile app tracker audit and PII leakage detection."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            res = self.run_cmd([
+                PYTHON_BIN, "parser_correlator/privacy_auditor.py",
+                "--session-dir", tmp_dir,
+                "--package", "com.example.app"
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "PRIVACY_AUDIT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "privacy_findings.json")))
+            with open(os.path.join(tmp_dir, "privacy_findings.json"), "r") as f:
+                data = json.load(f)
+                self.assertIn("overall_privacy_risk", data)
+                self.assertIn("trackers", data)
+
+    def test_14_appsec_auditor(self):
+        """Profile AppSec: Test OWASP MASVS crypto audit and OpenAPI 3.0 specification synthesis."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            res = self.run_cmd([
+                PYTHON_BIN, "parser_correlator/appsec_auditor.py",
+                "--session-dir", tmp_dir,
+                "--package", "com.example.bank"
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "API_SECURITY_REPORT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "openapi_spec.json")))
+            with open(os.path.join(tmp_dir, "openapi_spec.json"), "r") as f:
+                spec = json.load(f)
+                self.assertEqual(spec.get("openapi"), "3.0.3")
+                self.assertIn("paths", spec)
+
+    def test_15_orchestrator_multi_profile(self):
+        """Master: Test orchestrator execution with --profile all."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            res = self.run_cmd([
+                PYTHON_BIN, "orchestrator.py",
+                "--output-dir", tmp_dir,
+                "--profile", "all",
+                "--duration", "1",
+                "--dry-run"
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertIn("Operational Profile:     ALL", res.stdout)
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "PRIVACY_AUDIT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "API_SECURITY_REPORT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "openapi_spec.json")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "C2_PROTOCOL.md")))
+
+    def test_16_orchestrator_interactive_dry_run(self):
+        """Master: Test orchestrator execution with --interactive in dry-run mode."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            res = self.run_cmd([
+                PYTHON_BIN, "orchestrator.py",
+                "--output-dir", tmp_dir,
+                "--interactive",
+                "--dry-run"
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertIn("Interactive capture session simulated", res.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

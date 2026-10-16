@@ -17,3 +17,8 @@ Tracks "Open" and "Fixed" issues in the dbug analysis toolkit.
 | FIX-011 | `parser_correlator/family_classifier.py` | Need behavioral malware family attribution from observed artifacts | FIXED | Implemented heuristic scorer matching against catalog (Ermac, CraxsRAT, SpyNote, etc.) |
 | FIX-012 | `sample_triage/native_emulator.py` | Native packed string decryption routines in obfuscated `.so` libraries | FIXED | Built AArch64 emulation harness supporting Unicorn with pure-Python fallback |
 | FIX-013 | `orchestrator.py` & `targets/` | Canonical workspace out-of-sync between session runs and `targets/<hash>/` | FIXED | Added `sync_canonical_target_repo()` updating `TARGET.md`, `SOURCES.md`, `FACTS.md`, `ANALYSIS.md`, `REPORT.md`, `LOG.md` |
+| FIX-014 | `parser_correlator/privacy_auditor.py` | Need automated mobile ad tracker detection and GDPR/CCPA PII leak auditing | FIXED | Implemented privacy auditor using `config/tracker_catalog.json` outputting `PRIVACY_AUDIT.md` |
+| FIX-015 | `parser_correlator/appsec_auditor.py` | Need OWASP MASVS crypto auditing and automated API schema export | FIXED | Implemented appsec auditor analyzing ECB modes/static IVs and exporting OpenAPI 3.0 spec |
+| FIX-016 | `orchestrator.py` | Framework limited to fixed-duration automated malware runs | FIXED | Added `--profile {malware,privacy,appsec,all}` and `--interactive` mode for human testing |
+| FIX-017 | `orchestrator.py` & `targets/` | Executive reports and target ledgers hardcoded for malware only | FIXED | Tailored `TARGET.md` and `REPORT.md` dynamically per active profile (privacy, appsec, all, malware) and authored `docs/SOP.md` and `README.md` |
+

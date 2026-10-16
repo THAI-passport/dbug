@@ -33,3 +33,17 @@ Chronological log of bugs, regressions, performance quirks, and operational obse
   - **Observation:** Analysis artifacts were isolated in session timestamp folders, leaving `targets/<sample_hash>/` unpopulated.
   - **Mitigation:** Implemented `sync_canonical_target_repo()` which reconciles and writes `TARGET.md`, `SOURCES.md`, `FACTS.md`, `STATIC_AUDIT.md`, `ANALYSIS.md`, `REPORT.md`, `LOG.md`, and `IOCS.json` at the conclusion of each pipeline run.
 
+- **Script:** `parser_correlator/privacy_auditor.py`
+  - **Observation:** Commercial apps bundle diverse third-party analytics and tracking SDKs that transmit telemetry to distinct endpoints.
+  - **Mitigation:** Built `config/tracker_catalog.json` with categorized domain suffixes (Meta, Google, AppsFlyer, Adjust, Kochava, TikTok, Unity) allowing automated separation of First-Party vs Third-Party tracker traffic and compliance scoring.
+
+- **Script:** `parser_correlator/appsec_auditor.py`
+  - **Observation:** Mobile API testing and fuzzing requires importing observed endpoints into Burp Suite, Postman, or OWASP ZAP.
+  - **Mitigation:** Built automated OpenAPI 3.0 specification synthesis that aggregates unique paths, query parameters, HTTP methods, and JSON body templates from decrypted flows into `openapi_spec.json`.
+
+- **Script:** `orchestrator.py` & `targets/`
+  - **Observation:** `REPORT.md` and `TARGET.md` templates were hardcoded to "Executive Threat Intelligence Report" and "Android Infostealer / Banking Trojan", causing commercial AppSec and privacy audits to contain misleading malware headers.
+  - **Mitigation:** Refactored `_sync_target_workspace` to inspect `self.profile` and generate tailored reports (`Executive Mobile Privacy Audit & Data Compliance Report`, `Executive Mobile Application Security & API Assessment`, or unified assessment) highlighting domain-relevant artifacts (`PRIVACY_AUDIT.md`, `openapi_spec.json`, `API_SECURITY_REPORT.md`).
+
+
+

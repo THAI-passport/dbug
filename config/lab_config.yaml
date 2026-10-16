@@ -47,7 +47,9 @@ lab_environment:
 
   # Analysis session execution defaults
   analysis_defaults:
+    profile: "all"                        # Default operational profile: malware | privacy | appsec | all
     duration_seconds: 120                 # Default observation time window
+    interactive: false                    # Set true for manual human tester workflow
     pull_artifacts: true
     post_clean_canaries: true
     uninstall_after_run: true
