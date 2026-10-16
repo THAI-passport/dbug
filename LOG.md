@@ -45,6 +45,10 @@ Chronological log of bugs, regressions, performance quirks, and operational obse
   - **Observation:** `REPORT.md` and `TARGET.md` templates were hardcoded to "Executive Threat Intelligence Report" and "Android Infostealer / Banking Trojan", causing commercial AppSec and privacy audits to contain misleading malware headers.
   - **Mitigation:** Refactored `_sync_target_workspace` to inspect `self.profile` and generate tailored reports (`Executive Mobile Privacy Audit & Data Compliance Report`, `Executive Mobile Application Security & API Assessment`, or unified assessment) highlighting domain-relevant artifacts (`PRIVACY_AUDIT.md`, `openapi_spec.json`, `API_SECURITY_REPORT.md`).
 
+- **Script:** `orchestrator.py` & `scripts/install_dependencies.sh`
+  - **Observation:** Frida (`frida>=16.0.0`, `frida-tools>=12.0.0`) was declared in `requirements.txt` but not installed in the environment, and there was no reproducible bootstrap or fail-fast dependency pre-flight; Gate G4 would silently degrade to dry-run simulation when Frida was absent, hiding missing instrumentation from the operator.
+  - **Mitigation:** Installed Frida (17.24.0 / frida-tools 14.11.0); added `scripts/install_dependencies.sh` to install from `requirements.txt` (with `DBUG_TRUST_PYPI=1` trusted-host fallback for intercepting egress proxies), verify all core imports, and enforce the Frida >= 16.0.0 version floor; added `MasterOrchestrator.check_dependencies()` pre-flight invoked at the start of `execute_pipeline()` — fail-fast `exit(1)` with an install hint in non-dry-run mode, warning-only in dry-run; expanded `test_framework_e2e.py` to 24 tests (Frida import + version floor, dependency pre-flight).
+
 ## [2026-10-16] Fork v1 robustness & component integration (branch cline/vw3w3wp1)
 
 - **Script:** device_cloaking/verify_stealth_state.py
