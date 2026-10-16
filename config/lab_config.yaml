@@ -45,6 +45,26 @@ lab_environment:
         - "instrumentation/agent/crypto_dumper.js"
         - "instrumentation/agent/socket_tracer.js"
 
+    lsposed:
+      # LSPosed HideDevMode module (dongdevcom/HideDevMode) hooks Settings.Global
+      # at the system_server Binder level: adb_enabled=0, development_settings_enabled=0.
+      # TUNE: confirm the actual package id from the HideDevMode release APK before enabling.
+      hide_dev_mode_package: "com.dongdevcom.hidedevmode"
+      hide_dev_mode_required: false       # set true to hard-halt Gate G1 when module is absent/disabled
+      lsposed_manager_package: "ted.lsposed"
+
+  # Target stealth property state enforced by device_cloaking/apply_stealth_props.sh
+  # (kernel/property layer via resetprop) and asserted by verify_stealth_state.py (Layer 1).
+  stealth_properties:
+    ro.debuggable: "0"
+    ro.secure: "1"
+    ro.build.type: "user"
+    ro.build.tags: "release-keys"
+    sys.usb.state: "mtp"
+    sys.usb.config: "mtp"
+    persist.sys.usb.config: "mtp"
+    init.svc.adbd: "stopped"
+
   # Analysis session execution defaults
   analysis_defaults:
     profile: "all"                        # Default operational profile: malware | privacy | appsec | all

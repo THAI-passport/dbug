@@ -50,10 +50,19 @@ def parse_lab_config(config_path):
 
 
 class StealthAuditor:
-    def __init__(self, serial=None, dry_run=False, use_root=True):
+    def __init__(self, serial=None, dry_run=False, use_root=True, cfg=None):
         self.serial = serial
         self.dry_run = dry_run
         self.use_root = use_root
+        self.cfg = cfg or {}
+        lsposed_cfg = (
+            self.cfg.get("lab_environment", {}).get("telemetry", {}).get("lsposed", {})
+        )
+        self.hide_dev_mode_package = lsposed_cfg.get(
+            "hide_dev_mode_package", "com.dongdevcom.hidedevmode"
+        )
+        self.hide_dev_mode_required = lsposed_cfg.get("hide_dev_mode_required", False)
+        self.lsposed_manager_package = lsposed_cfg.get("lsposed_manager_package", "ted.lsposed")
 
     def run_adb(self, cmd_args, check=False, as_root=False):
         """Executes an ADB command with optional serial routing and root elevation."""
@@ -81,6 +90,8 @@ class StealthAuditor:
             if "getprop sys.usb.state" in cmd_str:
                 return "mtp"
             if "getprop sys.usb.config" in cmd_str:
+                return "mtp"
+            if "persist.sys.usb.config" in cmd_str:
                 return "mtp"
             if "getprop init.svc.adbd" in cmd_str:
                 return "stopped"
@@ -189,6 +200,7 @@ class StealthAuditor:
         # Layer 1: System Properties via getprop
         # ---------------------------------------------------------
         print("[*] Layer 1: Auditing System Properties (Kernel/Init Memory)...")
+        cfg_props = self.cfg.get("lab_environment", {}).get("stealth_properties", {}) or {}
         expected_props = {
             "ro.debuggable": "0",
             "ro.secure": "1",
@@ -196,8 +208,9 @@ class StealthAuditor:
             "ro.build.tags": "release-keys",
             "sys.usb.state": "mtp",
             "sys.usb.config": "mtp",
-            "init.svc.adbd": "stopped"
+            "init.svc.adbd": "stopped",
         }
+        expected_props.update({str(k): str(v) for k, v in cfg_props.items()})
 
         for prop, expected in expected_props.items():
             actual = self.run_adb(["shell", "getprop", prop])
@@ -308,6 +321,14 @@ class StealthAuditor:
             print("  [-] ADB transport unresponsive [FAIL]")
 
         # ---------------------------------------------------------
+        # Layer 6: LSPosed HideDevMode Module (system_server Settings.Global spoof)
+        # ---------------------------------------------------------
+        print("[*] Layer 6: Auditing LSPosed HideDevMode Module (Developer-Option Hiding)...")
+        hdm_failures, hdm_warnings = self.audit_lsposed_hide_dev_mode()
+        failures.extend(hdm_failures)
+        warnings.extend(hdm_warnings)
+
+        # ---------------------------------------------------------
         # Audit Summary & Gate Determination
         # ---------------------------------------------------------
         print("-" * 65)
@@ -330,6 +351,64 @@ class StealthAuditor:
             print("=" * 65)
             return True
 
+    def audit_lsposed_hide_dev_mode(self):
+        """Audits LSPosed HideDevMode module installation and active state.
+
+        HideDevMode (dongdevcom/HideDevMode) hooks Settings.Global at the
+        system_server Binder level so target apps read adb_enabled=0 and
+        development_settings_enabled=0. A one-shot `settings put global`
+        shell command cannot survive app-process restarts or cached Binder
+        proxies, so dbug defers developer-option hiding to this module and
+        verifies its state here rather than reimplementing the hook.
+
+        Returns (failures, warnings) lists. Non-fatal unless
+        hide_dev_mode_required is true in config/lab_config.yaml.
+        """
+        failures = []
+        warnings = []
+        pkg = self.hide_dev_mode_package
+
+        if self.dry_run:
+            print(f"  [DRY-RUN] LSPosed module package '{pkg}' simulated: INSTALLED, ENABLED")
+            print("  [DRY-RUN] HideDevMode Settings.Global spoof active for target package (PASS)")
+            return failures, warnings
+
+        # 1. Is the HideDevMode package installed on the device?
+        pm_path = self.run_adb(["shell", "pm", "path", pkg])
+        installed = bool(pm_path and "package:" in pm_path)
+
+        # 2. Is the package disabled for the current user?
+        disabled_pkgs = self.run_adb(["shell", "pm", "list", "packages", "-d"])
+        disabled = pkg in disabled_pkgs.split()
+
+        remediation = (
+            f"Install the HideDevMode release APK (dongdevcom/HideDevMode), "
+            f"enable the module in LSPosed Manager for the target package, "
+            f"and reboot the device."
+        )
+
+        if not installed:
+            msg = f"LSPosed HideDevMode module package '{pkg}' is not installed. {remediation}"
+            if self.hide_dev_mode_required:
+                failures.append(msg)
+                print(f"  [-] HideDevMode module NOT INSTALLED [FAIL]")
+            else:
+                warnings.append(msg)
+                print(f"  [*] HideDevMode module not installed [WARN]")
+        elif disabled:
+            msg = f"LSPosed HideDevMode module package '{pkg}' is installed but disabled for the current user. Enable it in LSPosed Manager and reboot."
+            if self.hide_dev_mode_required:
+                failures.append(msg)
+                print(f"  [-] HideDevMode module DISABLED [FAIL]")
+            else:
+                warnings.append(msg)
+                print(f"  [*] HideDevMode module disabled [WARN]")
+        else:
+            print(f"  [+] HideDevMode module package '{pkg}' installed and enabled (PASS)")
+            print("      system_server Settings.Global spoof: adb_enabled=0, development_settings_enabled=0")
+
+        return failures, warnings
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -350,7 +429,7 @@ def main():
     serial = args.serial or dev_cfg.get("serial") or None
     use_root = dev_cfg.get("use_root", True)
 
-    auditor = StealthAuditor(serial=serial, dry_run=args.dry_run, use_root=use_root)
+    auditor = StealthAuditor(serial=serial, dry_run=args.dry_run, use_root=use_root, cfg=cfg)
 
     if args.restore:
         ok = auditor.restore_props()

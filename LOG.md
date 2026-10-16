@@ -45,5 +45,25 @@ Chronological log of bugs, regressions, performance quirks, and operational obse
   - **Observation:** `REPORT.md` and `TARGET.md` templates were hardcoded to "Executive Threat Intelligence Report" and "Android Infostealer / Banking Trojan", causing commercial AppSec and privacy audits to contain misleading malware headers.
   - **Mitigation:** Refactored `_sync_target_workspace` to inspect `self.profile` and generate tailored reports (`Executive Mobile Privacy Audit & Data Compliance Report`, `Executive Mobile Application Security & API Assessment`, or unified assessment) highlighting domain-relevant artifacts (`PRIVACY_AUDIT.md`, `openapi_spec.json`, `API_SECURITY_REPORT.md`).
 
+## [2026-10-16] Fork v1 robustness & component integration (branch cline/vw3w3wp1)
+
+- **Script:** device_cloaking/verify_stealth_state.py
+  - **Change:** Added Layer 6 LSPosed HideDevMode module audit (package presence via pm path, enabled/disabled state via pm list packages -d, dry-run simulation, configurable hide_dev_mode_package, non-fatal unless hide_dev_mode_required: true). Layer 1 stealth properties now read from config stealth_properties block with hardcoded fallback. main() passes parsed lab config into StealthAuditor.
+- **Script:** device_cloaking/apply_stealth_props.sh
+  - **Change:** Documented two-layer cloaking model: resetprop property layer (Layer A) plus LSPosed HideDevMode system_server Settings.Global spoof (Layer B, dongdevcom/HideDevMode).
+- **Script:** orchestrator.py
+  - **Fix:** Resolved SyntaxError caused by nested single quotes in f-string (Defensive YARA rule path, formerly line 344) that blocked all orchestrator execution. Added G1 hint when hide_dev_mode_required is true.
+- **Script:** config/lab_config.yaml
+  - **Change:** Added telemetry.lsposed block (hide_dev_mode_package, hide_dev_mode_required, lsposed_manager_package) and stealth_properties block (target property values asserted by Layer 1).
+- **Script:** tests/test_framework_e2e.py
+  - **Change:** Added test_17_hide_devmode_preflight_layer covering Layer 6 dry-run behavior.
+- **New:** .github/workflows/ci.yml - offline CI: py_compile all Python scripts, bash -n all shell scripts, dry-run e2e suite; no device, no network, no secrets.
+- **New:** fork-v1.md - fork decision record (dbug itself as base), gate-by-gate integration plan, task checklist, acceptance criteria.
+- **New:** device_cloaking/HIDEDEVMODE_INTEGRATION.md - HideDevMode install/enable/verify/remediation runbook for Gate G1 Layer B.
+
+## [2026-10-16] Push constraint (environmental)
+
+- `.github/workflows/ci.yml` was prepared locally and validated (workflow YAML structure reviewed; equivalent checks run locally: py_compile, bash -n, 17/17 e2e tests). It is NOT in commit 317af30 because `git push` to origin cline/vw3w3wp1 was rejected: the GitHub App token lacks the `workflows` permission required to create or update `.github/workflows/ci.yml` (`refusing to allow a GitHub App to create or update workflow ... without workflows permission`). A maintainer with `workflows` permission can add the workflow file manually; its contents are recorded in fork-v1.md T-06 and the prior commit diff.
+
 
 
