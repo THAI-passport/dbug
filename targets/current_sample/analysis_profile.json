@@ -1,0 +1,31 @@
+{
+  "target": {
+    "package_name": "com.example.malware",
+    "sha256": "27b7ace4848a220c3242ffbccd2dd04710af61ba7a9cae17d119ca94065e5660",
+    "size_bytes": 1647
+  },
+  "detected_cues": [],
+  "hook_recommendations": {
+    "procfs_spoofing": false,
+    "settings_global_spoofing": false,
+    "native_ptrace_bypass": true,
+    "crypto_aes_gcm": true,
+    "crypto_stream_chunking": true,
+    "network_socket_tracing": true
+  },
+  "extracted_native_libraries": [
+    "lib/arm64-v8a/libpayload.so"
+  ],
+  "emulated_native_strings": [
+    {
+      "offset": "0x00001040",
+      "type": "XOR_STRING_DECRYPT",
+      "value": "https://api.telegram.org/bot6829104812:AAH9fCANARYTokenMockSecretKey/sendMessage",
+      "evidence": "[C]"
+    }
+  ],
+  "dangerous_permissions": [
+    "READ_SMS"
+  ],
+  "risk_score": 40
+}

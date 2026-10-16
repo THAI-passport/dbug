@@ -15,7 +15,8 @@ Thumbs.db
 *.so
 *.elf
 *.jar
-samples/
+samples/*
+!samples/build_samples.py
 targets/*/
 !targets/current_sample/
 work/

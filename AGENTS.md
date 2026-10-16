@@ -148,14 +148,16 @@ dbug/
 ├── malware_debugger.md                 # Threat model & anti-evasion rules
 ├── REPO_ROADMAP.md                     # Step-by-step framework implementation plan
 ├── task-non-malware.md                 # First-class AppSec & Privacy architecture plan
+├── Dockerfile                          # Multi-platform cloud container specification
+├── docker-compose.yml                  # Compose definitions for dbug cloud and optional containerized Android
 ├── config/
 │   ├── lab_config.yaml                 # Device serial, interfaces, target package, canary strings
 │   ├── mock_canaries.json              # Synthetic credentials/PII planted on device
-│   ├── seed_canaries.py                # Injects & cleans mock contacts, SMS, and clipboard
+│   ├── seed_canaries.py                # Injects & cleans mock contacts, SMS, and clipboard (physical & virtual)
 │   └── tracker_catalog.json            # Curated mobile tracking, ads & analytics SDK taxonomy
 ├── device_cloaking/
 │   ├── apply_stealth_props.sh          # Magisk/KernelSU resetprop script for ADB & debug flags
-│   └── verify_stealth_state.py         # Pre-flight audit of properties, settings & ports
+│   └── verify_stealth_state.py         # Pre-flight audit of properties, settings & ports (physical & virtual)
 ├── network_capture/
 │   ├── gateway_setup.sh                # Linux Wi-Fi AP hotspot + iptables transparent routing
 │   ├── ecapture_runner.py              # Manages eBPF libssl.so uprobes for out-of-band TLS capture
@@ -165,7 +167,16 @@ dbug/
 │   │   ├── bypass_antidebug.js         # Fallback in-process cloaking for Settings & Debug
 │   │   ├── crypto_dumper.js            # Hooks Cipher.init() & doFinal() for pre-encryption buffers
 │   │   └── socket_tracer.js            # Hooks InetAddress, URL, and libc connect()/send()
-│   └── frida_loader.py                 # Spawns/attaches via custom port & logs JSON telemetry
+│   └── frida_loader.py                 # Spawns/attaches via custom port & logs JSON telemetry (physical & virtual)
+├── sample_triage/
+│   ├── triage_apk.py                   # Static APK unpacking, DEX string scanning & anti-analysis detection
+│   ├── native_emulator.py              # AArch64 string decryptor emulation harness
+│   └── executable_debugger.py          # Standalone native executable debugger & dynamic tracer (ELF, .so, scripts)
+├── samples/                            # Bundled defensive mock samples for immediate out-of-the-box analysis
+│   ├── build_samples.py                # Reproducible defensive mock sample generator
+│   ├── sample.apk                      # Bundled defensive mock APK sample
+│   ├── sample_arm64.elf                # Bundled defensive mock AArch64 ELF executable
+│   └── sample_x86_64.elf               # Bundled defensive mock x86_64 ELF executable
 ├── parser_correlator/
 │   ├── pcap_decryptor.py               # Merges eCapture TLS master keys with raw gateway PCAPs
 │   ├── canary_hunter.py                # Correlates memory dumps & PCAP streams with mock canaries
@@ -176,6 +187,9 @@ dbug/
 │   ├── yara_generator.py               # Synthesizes defensive YARA detection rules
 │   └── ioc_extractor.py                # Extracts C2 IPs, domains, bot tokens, and STIX 2.1 bundle
 ├── orchestrator.py                     # Master CLI executing multi-profile automated stealth analysis
+├── scripts/
+│   ├── install_dependencies.sh         # Installs and validates Python dependencies
+│   └── setup_cloud_instance.sh         # Automated cloud instance provisioning script
 ├── targets/<target_id>/                # Per-target analysis workspace
 │   ├── TARGET.md                       # Target metadata, operational profile, gate ledger
 │   ├── SOURCES.md                      # Target origin, file size, SHA-256, package name
@@ -191,7 +205,8 @@ dbug/
 │   └── openapi_spec.json               # [Profile: appsec / all] Synthesized OpenAPI 3.0 specification
 ├── docs/                               # Framework documentation
 │   ├── steps.md                        # Chronological engineering steps log
-│   └── SOP.md                          # Standard Operating Procedures & analysis runbook
+│   ├── SOP.md                          # Standard Operating Procedures & analysis runbook
+│   └── CLOUD_GUIDE.md                  # Cloud & headless deployment runbook
 ├── FIXES.md                            # Open and resolved framework issues
 └── LOG.md                              # Tooling log for dbug framework itself
 ```

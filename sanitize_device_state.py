@@ -333,6 +333,10 @@ def main():
     parser.add_argument("--serial", default=None, help="ADB device serial number")
     parser.add_argument("--package", default=None,
                         help="Target package name for app teardown (Tier 4)")
+    parser.add_argument("--virtual", action="store_true",
+                        help="Run virtual sanitization without modifying device")
+    parser.add_argument("--cloud", action="store_true",
+                        help="Alias for --virtual")
     parser.add_argument("--dry-run", action="store_true",
                         help="Simulate sanitization without modifying device")
     parser.add_argument("--restore-props", action="store_true",
@@ -345,11 +349,12 @@ def main():
     dev_cfg = cfg.get("lab_environment", {}).get("device", {})
     serial = args.serial or dev_cfg.get("serial") or None
     use_root = dev_cfg.get("use_root", True)
+    dry_run = args.dry_run or args.virtual or args.cloud
 
     sanitizer = DeviceSanitizer(
         serial=serial,
         use_root=use_root,
-        dry_run=args.dry_run,
+        dry_run=dry_run,
         package_name=args.package,
         restore_props=args.restore_props,
     )
