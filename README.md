@@ -109,76 +109,83 @@ dbug/
 
 ## 4. Quickstart Guide
 
-### 4.1. Pre-Flight Verification
-Always verify the physical test device's stealth state before launching any target:
+### 4.1. Out-of-the-Box Immediate Run (Zero Configuration)
+Once you clone or fork this repository, you can start dynamic analysis immediately:
 ```bash
+python3 orchestrator.py
+```
+`dbug` automatically detects the environment: if no physical Android phone is attached via ADB, it activates the **Cloud & Virtual Emulation Sandbox Engine**, executes Gates G0 through G5 on the bundled defensive mock sample (`samples/sample.apk`), and produces all threat intelligence, privacy, and appsec deliverables in seconds.
+
+### 4.2. Zero-Phone Cloud Instance & Headless Mode
+Execute analysis on any headless Linux machine (AWS EC2, Google Cloud, DigitalOcean, Docker, GitHub Codespaces) without an Android phone:
+```bash
+python3 orchestrator.py --apk samples/sample.apk --mode virtual --profile all
+```
+
+### 4.3. Debugging Native Executables (.elf, .so, Linux/Android Binaries)
+`dbug` natively analyzes and debugs standalone native ELF executables and shared libraries:
+```bash
+# Debug an AArch64 or x86_64 ELF binary through Gates G0 to G5
+python3 orchestrator.py --binary samples/sample_arm64.elf --profile malware
+
+# Directly disassemble and trace native executable decryptors
+python3 sample_triage/executable_debugger.py --binary samples/sample_arm64.elf --disasm
+```
+
+### 4.4. One-Command Cloud VM Provisioning
+To automatically configure an Ubuntu/Debian cloud VM with all system tools, QEMU user emulation, Python packages, and mock samples:
+```bash
+bash scripts/setup_cloud_instance.sh
+```
+See [`docs/CLOUD_GUIDE.md`](docs/CLOUD_GUIDE.md) for full cloud runbooks.
+
+### 4.5. Docker Deployment
+```bash
+# Build and run the cloud container
+docker build -t dbug .
+docker run --rm -v $(pwd)/sessions:/workspace/sessions -v $(pwd)/targets:/workspace/targets dbug
+
+# Or via Docker Compose
+docker-compose up dbug
+```
+
+### 4.6. Physical Test Device Workflow
+When analyzing targets on a rooted physical Android device connected via ADB:
+```bash
+# 1. Pre-flight stealth verification (must pass before launching target)
 python3 device_cloaking/verify_stealth_state.py --config config/lab_config.yaml
-```
-*If any check fails, do NOT launch the application.*
 
-### 4.2. Run Malware Dynamic Analysis (`profile: malware`)
-```bash
-python3 orchestrator.py \
-    --apk samples/malware_sample.apk \
-    --profile malware \
-    --duration 120
-```
+# 2. Run malware dynamic analysis
+python3 orchestrator.py --apk /path/to/malware.apk --mode physical --profile malware --duration 120
 
-### 4.3. Run Commercial App Privacy Audit (`profile: privacy`)
-```bash
-python3 orchestrator.py \
-    --package com.example.commercial \
-    --profile privacy \
-    --duration 120
-```
+# 3. Run commercial app privacy audit
+python3 orchestrator.py --package com.example.commercial --mode physical --profile privacy
 
-### 4.4. Run Commercial AppSec Pen-Testing & OpenAPI Export (`profile: appsec`)
-Launch in interactive mode so you can perform login and MFA on the physical device:
-```bash
-python3 orchestrator.py \
-    --package com.example.fintech \
-    --profile appsec \
-    --interactive
-```
-Press `Enter` when testing is complete. The tool will stop captures, pull TLS keys, audit cryptography, and generate `openapi_spec.json`.
-
-### 4.5. Run Universal Full Assessment (`profile: all`)
-```bash
-python3 orchestrator.py \
-    --package com.example.app \
-    --profile all \
-    --duration 120
-```
-
-### 4.6. Dry-Run Simulation Mode (No Physical Device Required)
-To validate the complete pipeline offline:
-```bash
-python3 orchestrator.py --dry-run --profile all
+# 4. Interactive AppSec pen-testing (for MFA and complex UI exploration)
+python3 orchestrator.py --package com.example.fintech --mode physical --profile appsec --interactive
 ```
 
 ---
 
 ## 5. Automated Regression Test Suite
 
-The repository includes a 16-suite test harness verifying all gates, parsers, classifiers, and operational profiles:
+The repository includes a 31-suite end-to-end test harness verifying all gates, parsers, classifiers, executable debuggers, and cloud operational modes:
 ```bash
-python3 tests/test_framework_e2e.py
+pytest -v
+# or
+python3 -m unittest tests/test_framework_e2e.py
 ```
 Expected output:
 ```text
-................
-----------------------------------------------------------------------
-Ran 16 tests in 5.1s
-
-OK
+31 passed in ~16s (100% PASS)
 ```
 
 ---
 
 ## 6. Ground Rules & Operational Safety
 
-1. **Defensive Authorized Research Only:** Run strictly on dedicated hardware owned by the analyst.
-2. **Synthetic Canaries Only:** Never populate the test device with real accounts or credentials. Use `seed_canaries.py`.
-3. **Zero Untrusted Binaries Committed:** Raw APKs, DEX files, and ELF binaries are never committed to git.
+1. **Defensive Authorized Research Only:** Run strictly on dedicated hardware or isolated cloud/virtual sandboxes.
+2. **Synthetic Canaries Only:** Never populate test environments with real accounts or credentials. Use `seed_canaries.py`.
+3. **Zero Live Victim Credentials Committed:** Sensitive PCAPs and live victim credentials are never committed.
 4. **No Emoji:** Plain ASCII punctuation only across all logs, scripts, and documentation.
 5. **Strict Evidence Tagging:** Every factual claim carries an evidence tag (`[C]`, `[D]`, `[M]`, `[N]`, `[E]`, `[I]`).

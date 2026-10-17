@@ -472,6 +472,90 @@ class TestDbugFramework(unittest.TestCase):
         self.assertIn("STEALTH_FRIDA_PORT = 38921", src)
         self.assertIn("_validate_port", src)
 
+    def test_27_virtual_mode_orchestration(self):
+        """Zero-Phone / Cloud: Test orchestrator in virtual cloud sandbox mode across all gates."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            res = self.run_cmd([
+                PYTHON_BIN, "orchestrator.py",
+                "--apk", "samples/sample.apk",
+                "--package", "com.example.malware",
+                "--mode", "virtual",
+                "--profile", "all",
+                "--duration", "1",
+                "--output-dir", tmp_dir
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "STATIC_AUDIT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "REPORT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "IOCS.json")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "PRIVACY_AUDIT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "privacy_findings.json")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "API_SECURITY_REPORT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "openapi_spec.json")))
+
+    def test_28_native_executable_debugger(self):
+        """Native Executable: Test standalone ELF debugger and dynamic tracer."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            res = self.run_cmd([
+                PYTHON_BIN, "sample_triage/executable_debugger.py",
+                "--binary", "samples/sample_arm64.elf",
+                "--output-dir", tmp_dir,
+                "--disasm"
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "STATIC_AUDIT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "executable_debug_trace.json")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "instrumentation_events.jsonl")))
+
+            with open(os.path.join(tmp_dir, "executable_debug_trace.json"), "r") as f:
+                trace = json.load(f)
+                self.assertEqual(trace["metadata"]["arch"], "AArch64")
+                self.assertTrue(len(trace["metadata"]["decrypted_buffers"]) > 0)
+
+    def test_29_orchestrator_binary_mode(self):
+        """Native Executable: Test orchestrator pipeline on standalone native binary."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            res = self.run_cmd([
+                PYTHON_BIN, "orchestrator.py",
+                "--binary", "samples/sample_arm64.elf",
+                "--profile", "malware",
+                "--duration", "1",
+                "--output-dir", tmp_dir
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "STATIC_AUDIT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "C2_PROTOCOL.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "FAMILY_ATTRIBUTION.json")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "threat_report_stix21.json")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "IOCS.json")))
+
+    def test_30_cloud_scripts_syntax(self):
+        """Cloud Instance: Verify setup script syntax and container specification files."""
+        res = self.run_cmd(["bash", "-n", "scripts/setup_cloud_instance.sh"])
+        self.assertEqual(res.returncode, 0)
+
+        self.assertTrue(os.path.exists("Dockerfile"))
+        self.assertTrue(os.path.exists("docker-compose.yml"))
+        self.assertTrue(os.path.exists("docs/CLOUD_GUIDE.md"))
+
+        with open("Dockerfile", "r") as f:
+            df_content = f.read()
+            self.assertIn("FROM ubuntu:22.04", df_content)
+            self.assertIn("android-tools-adb", df_content)
+            self.assertIn("qemu-user-static", df_content)
+
+    def test_31_out_of_the_box_default_run(self):
+        """Out-of-the-Box: Verify orchestrator executes without arguments using bundled samples."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            res = self.run_cmd([
+                PYTHON_BIN, "orchestrator.py",
+                "--duration", "1",
+                "--output-dir", tmp_dir
+            ])
+            self.assertEqual(res.returncode, 0)
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "STATIC_AUDIT.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp_dir, "REPORT.md")))
+
 
 if __name__ == "__main__":
     unittest.main()

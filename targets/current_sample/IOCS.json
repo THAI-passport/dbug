@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "generated_at": "2026-10-16T17:17:43.124825+00:00",
+    "generated_at": "2026-10-16T20:59:03.860918+00:00",
     "package_name": "com.example.malware",
-    "sha256": "simulated_0000000000000000000000000000000000000000000000000000000000"
+    "sha256": "27b7ace4848a220c3242ffbccd2dd04710af61ba7a9cae17d119ca94065e5660"
   },
   "network_indicators": {
     "c2_ipv4": [
@@ -40,7 +40,7 @@
         "field": "otp_code",
         "encoding": "raw",
         "matched_value": "984217",
-        "timestamp": 1792171063352,
+        "timestamp": 1792184344006,
         "context": "Cipher event: AES/CBC/PKCS5Padding (Line 4)",
         "evidence_tag": "[M]"
       },
@@ -51,7 +51,7 @@
         "field": "otp_code",
         "encoding": "hex",
         "matched_value": "984217",
-        "timestamp": 1792171063352,
+        "timestamp": 1792184344006,
         "context": "Cipher event: AES/CBC/PKCS5Padding (Line 4)",
         "evidence_tag": "[M]"
       },

@@ -416,6 +416,8 @@ def main():
     )
     parser.add_argument("--config", default="config/lab_config.yaml", help="Path to lab_config.yaml")
     parser.add_argument("--serial", default=None, help="ADB device serial number")
+    parser.add_argument("--virtual", action="store_true", help="Run in zero-device virtual/cloud sandbox mode")
+    parser.add_argument("--cloud", action="store_true", help="Alias for --virtual")
     parser.add_argument("--dry-run", action="store_true", help="Simulate audit checks without physical hardware")
     parser.add_argument("--push-and-apply", action="store_true", help="Push and apply stealth properties via root before auditing")
     parser.add_argument("--restore", action="store_true", help="Revert device properties to developer defaults")
@@ -429,7 +431,13 @@ def main():
     serial = args.serial or dev_cfg.get("serial") or None
     use_root = dev_cfg.get("use_root", True)
 
-    auditor = StealthAuditor(serial=serial, dry_run=args.dry_run, use_root=use_root, cfg=cfg)
+    is_virtual = args.virtual or args.cloud
+    dry_run = args.dry_run or is_virtual
+
+    if is_virtual:
+        print("[*] Operating in Cloud/Virtual Sandbox Mode (Zero Physical Hardware Dependency)")
+
+    auditor = StealthAuditor(serial=serial, dry_run=dry_run, use_root=use_root, cfg=cfg)
 
     if args.restore:
         ok = auditor.restore_props()

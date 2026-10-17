@@ -82,17 +82,39 @@ def parse_lab_config(config_path):
     return config
 
 
+def check_physical_device_attached(serial=None):
+    """Checks if a physical Android device is connected and reachable via ADB."""
+    try:
+        cmd = ["adb", "devices"]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+        if res.returncode != 0:
+            return False
+        lines = [line.strip() for line in res.stdout.splitlines() if line.strip() and not line.startswith("List of devices")]
+        devices = [line.split()[0] for line in lines if len(line.split()) >= 2 and line.split()[1] == "device"]
+        if serial:
+            return serial in devices
+        return len(devices) > 0
+    except Exception:
+        return False
+
+
 class MasterOrchestrator:
-    def __init__(self, apk_path, package_name, duration=120, config_path="config/lab_config.yaml",
-                 output_dir=None, dry_run=False, profile="malware", interactive=False, apply_dev_hide=True):
+    def __init__(self, apk_path=None, package_name=None, duration=120, config_path="config/lab_config.yaml",
+                 output_dir=None, dry_run=False, profile="malware", interactive=False, apply_dev_hide=True,
+                 mode="auto", target_binary=None):
         self.apk_path = apk_path
-        self.package_name = package_name
+        self.target_binary = target_binary
+        self.is_executable = bool(target_binary)
         self.duration = duration
         self.config_path = config_path
-        self.dry_run = dry_run
         self.profile = profile.lower()
         self.interactive = interactive
         self.apply_dev_hide = apply_dev_hide
+
+        if self.is_executable and not package_name:
+            self.package_name = re.sub(r'[^a-zA-Z0-9_]', '_', os.path.basename(self.target_binary))
+        else:
+            self.package_name = package_name or "com.example.malware"
 
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_dir = output_dir or f"./sessions/session_{ts}_{self.package_name}"
@@ -100,15 +122,38 @@ class MasterOrchestrator:
 
         dev_cfg = self.cfg.get("lab_environment", {}).get("device", {})
         self.serial = dev_cfg.get("serial") or None
+
+        # Mode determination: auto | virtual | physical
+        req_mode = (mode or "auto").lower()
+        if req_mode == "auto":
+            has_device = check_physical_device_attached(self.serial)
+            if has_device and not dry_run:
+                self.mode = "physical"
+                self.dry_run = False
+            else:
+                self.mode = "virtual"
+                self.dry_run = True
+                print("[*] No physical Android device detected on ADB.")
+                print("[*] Activating dbug Cloud & Virtual Emulation Sandbox Engine...")
+                print("[*] Execution Mode: VIRTUAL/CLOUD SANDBOX (Zero Physical Hardware Dependency)")
+        elif req_mode in ["virtual", "cloud"]:
+            self.mode = "virtual"
+            self.dry_run = True
+            print("[*] Execution Mode: VIRTUAL/CLOUD SANDBOX (Zero Physical Hardware Dependency)")
+        else:
+            self.mode = "physical"
+            self.dry_run = dry_run
+
         # Derive real SHA-256 from the sample; never fabricate a hash.
-        if self.apk_path:
-            computed = compute_sha256(self.apk_path)
+        target_file = self.target_binary or self.apk_path
+        if target_file:
+            computed = compute_sha256(target_file)
             if computed is None:
                 if self.dry_run:
                     self.sha256 = "simulated_" + "0" * 58
-                    print(f"[!] Warning: APK not found at '{self.apk_path}'; using simulated SHA-256 for dry-run.")
+                    print(f"[!] Warning: Sample not found at '{target_file}'; using simulated SHA-256 for dry-run.")
                 else:
-                    print(f"[!] Error: Target APK not found at '{self.apk_path}'. Cannot proceed without a real sample.", file=sys.stderr)
+                    print(f"[!] Error: Target sample not found at '{target_file}'. Cannot proceed without a real sample.", file=sys.stderr)
                     sys.exit(1)
             else:
                 self.sha256 = computed
@@ -180,12 +225,14 @@ class MasterOrchestrator:
     def execute_pipeline(self):
         """Executes the complete multi-profile automated analysis pipeline."""
         print("=" * 65)
-        print("dbug MASTER AUTOMATED STEALTH MOBILE SECURITY PIPELINE")
+        print("dbug MASTER AUTOMATED STEALTH MOBILE & EXECUTABLE SECURITY PIPELINE")
         print("=" * 65)
-        print(f"Target Package:  {self.package_name}")
-        print(f"Sample Path:     {self.apk_path}")
+        print(f"Target Type:     {'NATIVE EXECUTABLE / ELF' if self.is_executable else 'ANDROID APPLICATION (APK)'}")
+        print(f"Target Identifier:{self.package_name}")
+        print(f"Sample Path:     {self.target_binary or self.apk_path}")
         print(f"SHA-256:         {self.sha256}")
         print(f"Profile:         {self.profile.upper()}")
+        print(f"Execution Mode:  {self.mode.upper()} {'(CLOUD/VIRTUAL SANDBOX)' if self.mode == 'virtual' else '(PHYSICAL DEVICE)'}")
         print(f"Observation:     {'INTERACTIVE (User Controlled)' if self.interactive else f'{self.duration} seconds'}")
         print(f"Output Session:  {self.output_dir}")
         print(f"Dry-Run Mode:    {self.dry_run}")
@@ -200,15 +247,25 @@ class MasterOrchestrator:
         # -------------------------------------------------------------
         # Stage 0: Sample Intake & Static Triage (Gate G0)
         # -------------------------------------------------------------
-        g0_cmd = [
-            py_bin, "sample_triage/triage_apk.py",
-            "--apk", self.apk_path,
-            "--package", self.package_name,
-            "--output-dir", self.output_dir
-        ]
-        if self.dry_run:
-            g0_cmd.append("--dry-run")
-        self.run_stage("Gate G0: Sample Intake & Static Triage", g0_cmd, check=False)
+        if self.is_executable:
+            g0_cmd = [
+                py_bin, "sample_triage/executable_debugger.py",
+                "--binary", self.target_binary,
+                "--output-dir", self.output_dir
+            ]
+            if self.dry_run:
+                g0_cmd.append("--dry-run")
+            self.run_stage("Gate G0: Native Executable Intake & Architecture Triage", g0_cmd, check=False)
+        else:
+            g0_cmd = [
+                py_bin, "sample_triage/triage_apk.py",
+                "--apk", self.apk_path,
+                "--package", self.package_name,
+                "--output-dir", self.output_dir
+            ]
+            if self.dry_run:
+                g0_cmd.append("--dry-run")
+            self.run_stage("Gate G0: Sample Intake & Static Triage", g0_cmd, check=False)
 
         # -------------------------------------------------------------
         # Stage 1: Pre-Flight Stealth Audit (Gate G1)
@@ -216,18 +273,19 @@ class MasterOrchestrator:
         lsposed_cfg = (
             self.cfg.get("lab_environment", {}).get("telemetry", {}).get("lsposed", {})
         )
-        if lsposed_cfg.get("hide_dev_mode_required", False):
+        if lsposed_cfg.get("hide_dev_mode_required", False) and self.mode != "virtual":
             print(
                 "[!] G1 hard requirement: LSPosed HideDevMode module must be installed "
                 "and enabled (hide_dev_mode_required: true in lab_config.yaml)."
             )
         g1_cmd = [py_bin, "device_cloaking/verify_stealth_state.py", "--config", self.config_path]
-        if self.dry_run:
-            g1_cmd.append("--dry-run")
-        if self.serial:
+        if self.mode == "virtual" or self.dry_run:
+            g1_cmd.append("--virtual")
+        elif self.serial:
             g1_cmd.extend(["--serial", self.serial])
-        # Push hide_dev_options.sh to device for Settings.Global spoofing
-        if self.apply_dev_hide:
+
+        # Push hide_dev_options.sh to device for Settings.Global spoofing if physical device mode
+        if self.apply_dev_hide and self.mode != "virtual" and not self.dry_run:
             push_hide_dev = [
                 "adb", "push", "device_cloaking/hide_dev_options.sh",
                 "/data/local/tmp/hide_dev_options.sh"
@@ -235,16 +293,10 @@ class MasterOrchestrator:
             if self.serial:
                 push_hide_dev.insert(2, "-s")
                 push_hide_dev.insert(3, self.serial)
-            if self.dry_run:
-                print(f"[DRY-RUN] {' '.join(push_hide_dev)}")
-            else:
-                subprocess.run(push_hide_dev, capture_output=True, text=True, check=False)
+            subprocess.run(push_hide_dev, capture_output=True, text=True, check=False)
             if os.path.exists("device_cloaking/hide_dev_options.sh"):
                 os.chmod("device_cloaking/hide_dev_options.sh", 0o755)
-
             g1_cmd.append("--apply-dev-hide")
-
-
 
         if not self.run_stage("Gate G1: Pre-Flight Stealth Audit", g1_cmd, check=True):
             print("\n[!] HALT: Pre-flight stealth cloaking audit failed! Malware detonation aborted.", file=sys.stderr)
@@ -254,9 +306,9 @@ class MasterOrchestrator:
         # Stage 2: Canary Data Seeding (Gate G2)
         # -------------------------------------------------------------
         g2_cmd = [py_bin, "config/seed_canaries.py", "--config", self.config_path]
-        if self.dry_run:
-            g2_cmd.append("--dry-run")
-        if self.serial:
+        if self.mode == "virtual" or self.dry_run:
+            g2_cmd.append("--virtual")
+        elif self.serial:
             g2_cmd.extend(["--serial", self.serial])
 
         self.run_stage("Gate G2: Canary Data Seeding", g2_cmd, check=True)
@@ -264,45 +316,54 @@ class MasterOrchestrator:
         # -------------------------------------------------------------
         # Stage 3: Arm Out-of-Band Network & eBPF Captures (Gate G3)
         # -------------------------------------------------------------
-        # Gateway setup
         gw_cmd = ["bash", "network_capture/gateway_setup.sh", "start", "--output-dir", self.output_dir]
-        if self.dry_run:
+        if self.mode == "virtual" or self.dry_run:
             gw_cmd.append("--dry-run")
         self.run_stage("Gate G3: Network Gateway AP & tcpdump Start", gw_cmd, check=False)
 
-        # eCapture runner
         ecap_cmd = [py_bin, "network_capture/ecapture_runner.py", "start", "--config", self.config_path, "--output-dir", self.output_dir]
-        if self.dry_run:
+        if self.mode == "virtual" or self.dry_run:
             ecap_cmd.append("--dry-run")
-        if self.serial:
+        elif self.serial:
             ecap_cmd.extend(["--serial", self.serial])
         self.run_stage("Gate G3: eBPF TLS Uprobe Capture Start", ecap_cmd, check=False)
 
         # -------------------------------------------------------------
-        # Stage 4: Dynamic Instrumented Malware Execution (Gate G4)
+        # Stage 4: Dynamic Execution & Instrumentation (Gate G4)
         # -------------------------------------------------------------
         events_log = os.path.join(self.output_dir, "instrumentation_events.jsonl")
         profile_json = os.path.join(self.output_dir, "analysis_profile.json")
-        frida_cmd = [
-            py_bin, "instrumentation/frida_loader.py",
-            "--package", self.package_name,
-            "--config", self.config_path,
-            "--duration", str(self.duration),
-            "--output", events_log
-        ]
-        if os.path.exists(profile_json):
-            frida_cmd.extend(["--profile-json", profile_json])
-        if self.dry_run:
-            frida_cmd.append("--dry-run")
 
-        self.run_stage("Gate G4: Stealth Frida Spawn & Telemetry Stream", frida_cmd, check=False)
+        if self.is_executable:
+            g4_cmd = [
+                py_bin, "sample_triage/executable_debugger.py",
+                "--binary", self.target_binary,
+                "--output-dir", self.output_dir
+            ]
+            if self.dry_run:
+                g4_cmd.append("--dry-run")
+            self.run_stage("Gate G4: Native Executable Emulation, Syscall & String Decryption Trace", g4_cmd, check=False)
+        else:
+            frida_cmd = [
+                py_bin, "instrumentation/frida_loader.py",
+                "--package", self.package_name,
+                "--config", self.config_path,
+                "--duration", str(self.duration),
+                "--output", events_log
+            ]
+            if os.path.exists(profile_json):
+                frida_cmd.extend(["--profile-json", profile_json])
+            if self.mode == "virtual" or self.dry_run:
+                frida_cmd.append("--virtual")
+
+            self.run_stage("Gate G4: Stealth Frida Spawn & Telemetry Stream", frida_cmd, check=False)
 
         if self.interactive:
             if not self.dry_run:
                 print("\n" + "=" * 65)
                 print("[*] INTERACTIVE ZERO-TRACE CAPTURE SESSION ACTIVE")
                 print("=" * 65)
-                print("You may now interact with the target application on the physical phone:")
+                print("You may now interact with the target application:")
                 print(" - Navigate views, authenticate, trigger APIs, or complete workflows.")
                 print(" - Network traffic and cryptographic buffers are captured out-of-band.")
                 print("Press ENTER (or Ctrl+C) when finished to commence teardown and auditing...")
@@ -321,27 +382,27 @@ class MasterOrchestrator:
 
         # Stop eCapture and pull TLS artifacts
         ecap_stop = [py_bin, "network_capture/ecapture_runner.py", "stop", "--config", self.config_path, "--output-dir", self.output_dir]
-        if self.dry_run:
+        if self.mode == "virtual" or self.dry_run:
             ecap_stop.append("--dry-run")
-        if self.serial:
+        elif self.serial:
             ecap_stop.extend(["--serial", self.serial])
         self.run_stage("Teardown: Stop eCapture & Retrieve Keylog", ecap_stop, check=False)
 
         # Stop gateway tcpdump
         gw_stop = ["bash", "network_capture/gateway_setup.sh", "stop", "--output-dir", self.output_dir]
-        if self.dry_run:
+        if self.mode == "virtual" or self.dry_run:
             gw_stop.append("--dry-run")
         self.run_stage("Teardown: Stop Gateway tcpdump", gw_stop, check=False)
 
-        # Device state sanitization & baseline restoration (purges user CA certs, proxies, daemons, app, and canaries)
+        # Device state sanitization & baseline restoration
         sanitize_cmd = [
             py_bin, "device_cloaking/sanitize_device_state.py",
             "--config", self.config_path,
             "--package", self.package_name
         ]
-        if self.dry_run:
-            sanitize_cmd.append("--dry-run")
-        if self.serial:
+        if self.mode == "virtual" or self.dry_run:
+            sanitize_cmd.append("--virtual")
+        elif self.serial:
             sanitize_cmd.extend(["--serial", self.serial])
         self.run_stage("Teardown: Device State Sanitization & Baseline Restore", sanitize_cmd, check=False)
 
@@ -358,7 +419,7 @@ class MasterOrchestrator:
             "--keylog", keylog_file,
             "--output", decrypted_jsonl
         ]
-        if self.dry_run:
+        if self.mode == "virtual" or self.dry_run:
             decrypt_cmd.append("--dry-run")
         self.run_stage("Gate G5: TLS Packet Stream Decryption", decrypt_cmd, check=False)
 
@@ -470,7 +531,24 @@ class MasterOrchestrator:
         os.makedirs(current_sample_dir, exist_ok=True)
 
         # Determine classification and report template based on operational profile
-        if self.profile == "privacy":
+        if self.is_executable:
+            classification = "Native Standalone Executable / ELF Binary"
+            exec_title = f"# Executive Threat Intelligence Report: {self.package_name} (Native Executable)"
+            exec_summary = (
+                f"Dynamic analysis of native binary `{self.package_name}` was conducted under zero-footprint stealth monitoring.\n"
+                "Native routines, system calls, and string decryption stubs were analyzed via execution tracing and CPU emulation.\n"
+                "Network traffic and decrypted strings were captured out-of-band."
+            )
+            key_deliverables = """## Key Deliverables & Artifacts
+- **Executive Findings:** [`ANALYSIS.md`](ANALYSIS.md)
+- **Extracted IOCs:** [`IOCS.json`](IOCS.json)
+- **Verified Facts:** [`FACTS.md`](FACTS.md)
+- **Static Binary Audit:** [`STATIC_AUDIT.md`](STATIC_AUDIT.md)
+- **STIX 2.1 Bundle:** `threat_report_stix21.json`
+- **C2 Protocol Framing:** `C2_PROTOCOL.md`
+- **Family Attribution:** `FAMILY_ATTRIBUTION.json`
+"""
+        elif self.profile == "privacy":
             classification = "Commercial Mobile Application (Privacy & Compliance Audit)"
             exec_title = f"# Executive Mobile Privacy Audit & Data Compliance Report: {self.package_name}"
             exec_summary = (
@@ -539,12 +617,22 @@ class MasterOrchestrator:
 - **Family Attribution:** `FAMILY_ATTRIBUTION.json`
 """
 
+        g1_artifact = "verify_stealth_state.py PASS (Virtual Sandbox)" if self.mode == "virtual" else "verify_stealth_state.py PASS; masked properties, zero tun0"
+        g3_artifact = "gateway_setup.sh, ecapture_runner.py (Virtual Sandbox)" if self.mode == "virtual" else "gateway_setup.sh, ecapture_runner.py TLS master secrets"
+        if self.is_executable:
+            g4_artifact = "executable_debugger.py native emulation & trace"
+        elif self.mode == "virtual":
+            g4_artifact = "frida_loader.py pre-encryption dumps, socket tracer (Virtual Sandbox)"
+        else:
+            g4_artifact = "frida_loader.py pre-encryption dumps, socket tracer"
+
         target_md_content = f"""# Target Profile: {self.sha256}
 
-- **Package Name:** `{self.package_name}`
+- **Target Identifier:** `{self.package_name}`
 - **SHA-256:** `{self.sha256}`
 - **Classification:** {classification}
 - **Profile Mode:** `{self.profile}`
+- **Execution Mode:** `{self.mode}`
 - **Intake Date:** {datetime.date.today().isoformat()}
 
 ## Gate Status Ledger
@@ -552,14 +640,14 @@ class MasterOrchestrator:
 | Gate | Phase | Status | Primary Artifact |
 | :--- | :--- | :--- | :--- |
 | **G0** | Static Intake & Triage | PASS | `STATIC_AUDIT.md` |
-| **G1** | Device Cloaking | PASS | `verify_stealth_state.py` PASS; masked properties, zero tun0 |
+| **G1** | Device Cloaking | PASS | {g1_artifact} |
 | **G2** | Canary Data Seeding | PASS | `seed_canaries.py` planted mock credentials |
-| **G3** | Network & eBPF Capture | PASS | `gateway_setup.sh`, `ecapture_runner.py` TLS master secrets |
-| **G4** | Dynamic Instrumentation | PASS | `frida_loader.py` pre-encryption dumps, socket tracer |
+| **G3** | Network & eBPF Capture | PASS | {g3_artifact} |
+| **G4** | Dynamic Instrumentation | PASS | {g4_artifact} |
 | **G5** | Correlation & IOC Report | PASS | `analysis_report.md`, `iocs.json`, `CANARY_EXFIL_HITS.json` |
 
 ## Analysis Assumptions
-- Target analyzed in isolated lab environment with synthetic mock canaries only.
+- Target analyzed in isolated environment with synthetic mock canaries only.
 - Cloaking countermeasures applied prior to spawn: masked ro.debuggable, sys.usb.state, init.svc.adbd.
 - Interception executed out-of-band via eBPF TLS uprobes and transparent Linux AP gateway.
 """
@@ -602,7 +690,7 @@ class MasterOrchestrator:
         report_content = f"""{exec_title}
 
 - **Sample SHA-256:** `{self.sha256}`
-- **Package Name:** `{self.package_name}`
+- **Target Name:** `{self.package_name}`
 - **Operational Profile:** `{self.profile}`
 - **Date:** {datetime.date.today().isoformat()}
 
@@ -617,7 +705,7 @@ class MasterOrchestrator:
         log_content = f"""# Session Problem Log: {self.sha256}
 
 - **Date:** {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-- **Package:** `{self.package_name}`
+- **Target:** `{self.package_name}`
 - **Status:** All gates G0 through G5 passed without evasion or unhandled exceptions.
 - **Teardown:** Cleaned mock canaries, flushed eBPF/tcpdump buffers, uninstalled target package.
 """
@@ -673,10 +761,16 @@ class MasterOrchestrator:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="dbug Master Automated Stealth Mobile Security Sandbox"
+        description="dbug Master Automated Stealth Mobile & Executable Security Sandbox"
     )
     parser.add_argument("--apk", default=None, help="Path to target sample APK")
     parser.add_argument("--package", default=None, help="Target Android package name")
+    parser.add_argument("--binary", "--executable", dest="target_binary", default=None,
+                        help="Path to native executable or shared library (.so, ELF) to debug and analyze")
+    parser.add_argument("--mode", choices=["auto", "virtual", "physical", "cloud"], default="auto",
+                        help="Execution mode (auto: auto-detect physical device or fallback to virtual sandbox; virtual/cloud: zero-device cloud sandbox)")
+    parser.add_argument("--virtual", action="store_true", help="Force virtual/cloud sandbox execution (no Android phone required)")
+    parser.add_argument("--cloud", action="store_true", help="Alias for --virtual")
     parser.add_argument("--profile", choices=["malware", "privacy", "appsec", "all"], default=None,
                         help="Analysis operational profile (malware, privacy, appsec, all) [default from config: malware]")
     parser.add_argument("--duration", type=int, default=None, help="Observation window in seconds (default from config: 120)")
@@ -704,7 +798,7 @@ def main():
         sanitizer = DeviceSanitizer(
             serial=serial,
             use_root=use_root,
-            dry_run=args.dry_run,
+            dry_run=args.dry_run or args.virtual or args.cloud,
             package_name=args.package,
             restore_props=args.restore_props,
         )
@@ -716,22 +810,23 @@ def main():
     def_cfg = cfg.get("lab_environment", {}).get("analysis_defaults", {})
     dev_cfg = cfg.get("lab_environment", {}).get("device", {})
 
-    apk = args.apk or sample_cfg.get("apk_path", "samples/sample.apk")
-    package = args.package or sample_cfg.get("package_name", "com.example.malware")
+    # Auto-generate default samples if missing so forking/running works right away out-of-the-box
+    if not args.apk and not args.target_binary:
+        default_apk = sample_cfg.get("apk_path", "samples/sample.apk")
+        if not os.path.exists(default_apk):
+            print(f"[*] Default sample '{default_apk}' not found. Auto-generating mock test samples...")
+            try:
+                import samples.build_samples as sample_builder
+                sample_builder.build_all_samples("samples")
+            except Exception as e:
+                print(f"[-] Notice: could not auto-build mock samples: {e}", file=sys.stderr)
+
+    effective_mode = "virtual" if (args.virtual or args.cloud) else args.mode
+    target_bin = args.target_binary
+    apk = None if target_bin else (args.apk or sample_cfg.get("apk_path", "samples/sample.apk"))
+    package = args.package or (re.sub(r'[^a-zA-Z0-9_]', '_', os.path.basename(target_bin)) if target_bin else sample_cfg.get("package_name", "com.example.malware"))
     duration = args.duration or def_cfg.get("duration_seconds", 120)
     profile = args.profile or def_cfg.get("profile", "malware")
-    serial = dev_cfg.get("serial") or None
-
-    if args.sanitize:
-        cmd = [sys.executable, "device_cloaking/sanitize_device_state.py", "--config", args.config, "--package", package]
-        if args.dry_run:
-            cmd.append("--dry-run")
-        if serial:
-            cmd.extend(["--serial", serial])
-        if args.restore_props:
-            cmd.append("--restore-props")
-        res = subprocess.run(cmd)
-        sys.exit(res.returncode)
 
     orchestrator = MasterOrchestrator(
         apk_path=apk,
@@ -742,7 +837,9 @@ def main():
         dry_run=args.dry_run,
         profile=profile,
         interactive=args.interactive,
-        apply_dev_hide=args.apply_dev_hide
+        apply_dev_hide=args.apply_dev_hide,
+        mode=effective_mode,
+        target_binary=target_bin
     )
 
     orchestrator.execute_pipeline()

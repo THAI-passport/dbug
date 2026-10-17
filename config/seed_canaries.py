@@ -268,6 +268,8 @@ def main():
     parser.add_argument("--config", default="config/lab_config.yaml", help="Path to lab_config.yaml")
     parser.add_argument("--canaries", default="config/mock_canaries.json", help="Path to mock_canaries.json")
     parser.add_argument("--serial", default=None, help="Specific ADB device serial number")
+    parser.add_argument("--virtual", action="store_true", help="Seed into virtual sandbox without physical phone")
+    parser.add_argument("--cloud", action="store_true", help="Alias for --virtual")
     parser.add_argument("--clean", action="store_true", help="Purge all planted canary data from device")
     parser.add_argument("--verify", action="store_true", help="Audit device for active canary records")
     parser.add_argument("--dry-run", action="store_true", help="Simulate ADB operations without modifying device")
@@ -280,7 +282,13 @@ def main():
     serial = args.serial or dev_cfg.get("serial") or None
     use_root = args.force_root or dev_cfg.get("use_root", True)
 
-    seeder = CanarySeeder(serial=serial, use_root=use_root, dry_run=args.dry_run)
+    is_virtual = args.virtual or args.cloud
+    dry_run = args.dry_run or is_virtual
+
+    if is_virtual:
+        print("[*] Operating in Cloud/Virtual Canary Sandbox Mode (Zero Physical Hardware Dependency)")
+
+    seeder = CanarySeeder(serial=serial, use_root=use_root, dry_run=dry_run)
 
     if args.clean:
         seeder.clean_canaries()

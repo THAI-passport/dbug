@@ -80,6 +80,17 @@ Chronological log of bugs, regressions, performance quirks, and operational obse
 - **Script:** tests/test_framework_e2e.py
   - **Change:** Added test_18 (frida client importable + version), test_19 (frida_server_setup.sh bash -n), test_20 (stealth port constants present). Suite now 20 tests.
 - **Host:** Installed frida 17.24.0 Python client via pip (frida package imports and get_device_manager available).
+- **Module:** sample_triage/executable_debugger.py
+  - **New:** Standalone native executable debugger supporting ELF parsing, dynamic dependencies, JNI exports, Capstone disassembly, XOR/crypto loop detection, and Unicorn/pure-Python AArch64/x86_64 emulation emitting standard dbug telemetry events.
+- **Module:** samples/build_samples.py
+  - **New:** Automated defensive sample generator producing mock sample.apk, sample_arm64.elf, and sample_x86_64.elf for immediate testing and verification without requiring untrusted external binaries.
+- **Framework:** Cloud & Zero-Phone Virtual Sandbox
+  - **Change:** Added --mode {auto,virtual,physical,cloud}, --virtual, --cloud, and --binary flags to orchestrator.py, verify_stealth_state.py, seed_canaries.py, frida_loader.py, and sanitize_device_state.py. Orchestrator auto-detects physical ADB hardware and seamlessly defaults to in-process virtual analysis if no phone is connected.
+- **Infrastructure:** Dockerfile & Cloud Setup
+  - **New:** Multi-architecture Dockerfile, docker-compose.yml, scripts/setup_cloud_instance.sh, and docs/CLOUD_GUIDE.md supporting turnkey headless deployment across AWS, GCP, and DigitalOcean.
+- **Tests:** tests/test_framework_e2e.py
+  - **Change:** Added test_27 through test_31 covering ELF parsing, Capstone disassembly, native emulation, cloud instance provisioning script syntax, and auto-sample builder. Test suite expanded to 31/31 tests passing.
+
 
 
 

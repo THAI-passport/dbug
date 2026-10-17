@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  dbug:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dbug:latest
+    container_name: dbug_sandbox
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./samples:/workspace/samples
+      - ./sessions:/workspace/sessions
+      - ./targets:/workspace/targets
+      - ./config:/workspace/config
+    command: ["--mode", "virtual", "--profile", "all"]
+
+  # Optional Redroid container for cloud instances with KVM enabled (/dev/kvm).
+  # Run with: docker-compose --profile emulator up
+  redroid:
+    profiles: ["emulator"]
+    image: redroid/redroid:12.0.0-latest
+    privileged: true
+    ports:
+      - "5555:5555"
+    volumes:
+      - redroid_data:/data
+    command:
+      - androidboot.redroid_width=1080
+      - androidboot.redroid_height=1920
+      - androidboot.redroid_dpi=480
+      - androidboot.redroid_gpu_mode=guest
+
+volumes:
+  redroid_data:

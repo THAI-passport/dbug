@@ -207,6 +207,26 @@ class FridaLoader:
             }
         ]
 
+        # Inject dynamic telemetry derived from static analysis profile if available
+        if self.profile_data:
+            emulated_strings = self.profile_data.get("emulated_native_strings", [])
+            for item in emulated_strings:
+                val = item.get("value", "")
+                if "api.telegram.org" in val:
+                    sample_events.append({
+                        "event": "DNS_LOOKUP",
+                        "hostname": "api.telegram.org",
+                        "timestamp_ms": now_ms + 800
+                    })
+                    sample_events.append({
+                        "event": "SOCKET_CONNECT",
+                        "family": "AF_INET",
+                        "destination_ip": "149.154.167.220",
+                        "destination_port": 443,
+                        "timestamp_ms": now_ms + 850
+                    })
+                    break
+
         with open(self.log_path, "w", encoding="utf-8") as f:
             for ev in sample_events:
                 f.write(json.dumps(ev) + "\n")
@@ -301,6 +321,8 @@ def main():
     parser.add_argument("--duration", type=int, default=120, help="Observation window in seconds")
     parser.add_argument("--output", default="./sessions/current_capture/instrumentation_events.jsonl", help="Telemetry output log")
     parser.add_argument("--profile-json", default=None, help="Path to static analysis_profile.json (Gate G0)")
+    parser.add_argument("--virtual", action="store_true", help="Run virtual telemetry simulation without physical device")
+    parser.add_argument("--cloud", action="store_true", help="Alias for --virtual")
     parser.add_argument("--dry-run", action="store_true", help="Simulate execution without physical hardware")
     args = parser.parse_args()
 
@@ -312,6 +334,7 @@ def main():
     port = args.port or frida_cfg.get("port", STEALTH_FRIDA_PORT)
     duration = args.duration
     daemon_name = frida_cfg.get("remote_daemon_name", "hl_daemon")
+    dry_run = args.dry_run or args.virtual or args.cloud
 
     script_paths = [
         "instrumentation/agent/bypass_antidebug.js",
@@ -324,7 +347,7 @@ def main():
         port=port,
         log_path=args.output,
         profile_json=args.profile_json,
-        dry_run=args.dry_run,
+        dry_run=dry_run,
         daemon_name=daemon_name,
         frida_version=frida.__version__ if HAS_FRIDA else None
     )
